@@ -12,6 +12,14 @@ set -e
 : "${NETBIOS_NAME:=DC1}"
 : "${EXTERNAL_IP:=127.0.0.1}"
 
+# Password policy defaults
+: "${PWD_COMPLEXITY:=on}"
+: "${PWD_MIN_LENGTH:=7}"
+: "${PWD_HISTORY:=24}"
+: "${PWD_MIN_AGE:=1}"
+: "${PWD_MAX_AGE:=42}"
+: "${PWD_STORE_PLAINTEXT:=off}"
+
 # Log resolved configuration
 echo "=== Samba AD DC Configuration ==="
 echo "  REALM:         ${REALM}"
@@ -91,6 +99,16 @@ if [ -f /var/lib/samba/private/krb5.conf ]; then
     # We add kdc and admin_server before the existing entries.
     sed -i "/^\s*${REALM} = {/a\\        kdc = 127.0.0.1\n        admin_server = 127.0.0.1" /etc/krb5.conf
 fi
+
+# Apply password policy settings
+echo "Applying password policy..."
+samba-tool domain passwordsettings set --complexity="${PWD_COMPLEXITY}" 2>/dev/null || true
+samba-tool domain passwordsettings set --min-pwd-length="${PWD_MIN_LENGTH}" 2>/dev/null || true
+samba-tool domain passwordsettings set --history-length="${PWD_HISTORY}" 2>/dev/null || true
+samba-tool domain passwordsettings set --min-pwd-age="${PWD_MIN_AGE}" 2>/dev/null || true
+samba-tool domain passwordsettings set --max-pwd-age="${PWD_MAX_AGE}" 2>/dev/null || true
+samba-tool domain passwordsettings set --store-plaintext="${PWD_STORE_PLAINTEXT}" 2>/dev/null || true
+echo "Password policy applied."
 
 echo "Starting Samba AD DC..."
 exec samba -i --no-process-group
