@@ -36,8 +36,7 @@ RUN groupadd -g ${freerad_gid} -r freerad \
  && ln -s /etc/freeradius /etc/raddb
 
 WORKDIR /
-COPY entrypoint.sh entrypoint.sh
-RUN chmod +x entrypoint.sh
+COPY --chmod=755 entrypoint.sh entrypoint.sh
 
 EXPOSE 1812/udp 1813/udp
 ENTRYPOINT ["/entrypoint.sh"]

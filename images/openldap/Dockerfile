@@ -14,7 +14,7 @@ RUN     apt-get update \
 
 RUN     rm -rf /var/lib/ldap /etc/ldap/slapd.d
 
-COPY    entrypoint.sh /entrypoint.sh
+COPY    --chmod=755 entrypoint.sh /entrypoint.sh
 
 EXPOSE  389 636
 
