@@ -6,11 +6,11 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install Samba and related tools
 # dnsutils: for testing DNS resolution (dig/nslookup)
 # iproute2: for network interface inspection (ip/ss)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    samba=${SAMBA_VERSION} \
-    smbclient=${SAMBA_VERSION} \
+RUN apt-get update && apt-get install -y \
+    samba-ad-dc \
+    smbclient \
+    krb5-user \
     ldap-utils \
-    winbind=${SAMBA_VERSION} \
     dnsutils \
     iproute2 \
     iputils-ping \
@@ -36,6 +36,9 @@ EXPOSE 53/tcp 53/udp 88/tcp 88/udp 135/tcp 137/udp 138/udp 139/tcp 389/tcp 389/u
 
 # Setup directories for persistent data
 VOLUME ["/var/lib/samba", "/etc/samba", "/run/samba"]
+
+# Fix testparm warning: "lock directory /run/samba should have permissions 0755"
+RUN chmod 0755 /run/samba
 
 COPY --chmod=755 entrypoint.sh /entrypoint.sh
 

@@ -70,21 +70,20 @@ else
 fi
 
 # Set up Kerberos for local debugging
+# samba-tool generates /var/lib/samba/private/krb5.conf with dns_lookup_kdc = true,
+# which breaks kinit inside the pod because K8s CoreDNS cannot resolve Kerberos SRV records.
+# Fix: copy the generated config, disable DNS-based KDC discovery, and inject explicit
+# kdc/admin_server entries into the existing [realms] block (which already has default_domain).
+# We sed-insert into the existing block to avoid creating a duplicate [realms] section.
 echo "Setting up /etc/krb5.conf for local debugging..."
 if [ -f /var/lib/samba/private/krb5.conf ]; then
     cp /var/lib/samba/private/krb5.conf /etc/krb5.conf
-    # Patch the config to disable DNS lookup and explicitly point to localhost
+    # Disable DNS-based KDC discovery (K8s CoreDNS can't resolve _kerberos._tcp SRV records)
     sed -i 's/dns_lookup_kdc = true/dns_lookup_kdc = false/g' /etc/krb5.conf
-    # Add explicit KDC mapping to localhost
-    cat >> /etc/krb5.conf <<EOF
-
-[realms]
-    ${REALM} = {
-        kdc = 127.0.0.1
-        admin_server = 127.0.0.1
-        default_domain = $(echo "${REALM}" | tr '[:upper:]' '[:lower:]')
-    }
-EOF
+    # Insert explicit KDC address into the existing [realms] block right after "REALM = {"
+    # The generated krb5.conf already has: REALM = {\n\t\tdefault_domain = ...\n\t}
+    # We add kdc and admin_server before the existing entries.
+    sed -i "/^\s*${REALM} = {/a\\        kdc = 127.0.0.1\n        admin_server = 127.0.0.1" /etc/krb5.conf
 fi
 
 echo "Starting Samba AD DC..."
