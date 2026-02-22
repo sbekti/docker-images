@@ -30,6 +30,12 @@ if [ "$(hostname)" != "${NETBIOS_NAME}" ]; then
     echo "WARNING: Failed to set hostname to ${NETBIOS_NAME}. Running as $(hostname)." >&2
 fi
 
+# Fix testparm warning about lock directory permissions
+# /run/samba is created at runtime by samba package init scripts
+if [ -d /run/samba ]; then
+    chmod 0755 /run/samba
+fi
+
 # Clean up /etc/hosts to remove Docker's internal IP entry for the hostname
 # This ensures local resolution uses the External IP we inject
 if ! grep -q "^${EXTERNAL_IP}.*${NETBIOS_NAME}" /etc/hosts; then
