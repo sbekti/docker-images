@@ -1,0 +1,140 @@
+name: Docker
+
+on:
+  push:
+    branches: [main]
+    tags: ['*/v*.*.*']
+  workflow_dispatch:
+    inputs:
+      image:
+        description: 'Image to build (directory name under images/)'
+        required: true
+        type: choice
+        options:
+          - asterisk
+          - aws-cli-tgz
+          - dnsmasq
+          - freeradius
+          - novnc
+          - openldap
+          - samba-ad
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  # ---------------------------------------------------------
+  # Determine which images need to be built
+  # ---------------------------------------------------------
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      has_images: ${{ steps.set-matrix.outputs.has_images }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Determine images to build
+        id: set-matrix
+        run: |
+          IMAGES=()
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Manual dispatch: build the specified image
+            IMAGES+=("${{ inputs.image }}")
+
+          elif [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            # Tag push: extract image name from tag (e.g. asterisk/v1.0.0 -> asterisk)
+            TAG="${GITHUB_REF#refs/tags/}"
+            IMAGE_NAME="${TAG%%/*}"
+            IMAGES+=("$IMAGE_NAME")
+
+          else
+            # Push to main: detect changed image directories
+            CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD)
+            for dir in images/*/; do
+              IMAGE_NAME=$(basename "$dir")
+              if echo "$CHANGED_FILES" | grep -q "^images/${IMAGE_NAME}/"; then
+                IMAGES+=("$IMAGE_NAME")
+              fi
+            done
+          fi
+
+          if [ ${#IMAGES[@]} -eq 0 ]; then
+            echo "matrix={\"image\":[]}" >> "$GITHUB_OUTPUT"
+            echo "has_images=false" >> "$GITHUB_OUTPUT"
+          else
+            JSON=$(printf '%s\n' "${IMAGES[@]}" | jq -R . | jq -sc '{"image": .}')
+            echo "matrix=$JSON" >> "$GITHUB_OUTPUT"
+            echo "has_images=true" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "Images to build: ${IMAGES[*]:-none}"
+
+  # ---------------------------------------------------------
+  # Build and push images
+  # ---------------------------------------------------------
+  build:
+    needs: detect
+    if: needs.detect.outputs.has_images == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect.outputs.matrix) }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da # v3.7.0
+        with:
+          cosign-release: 'v2.4.1'
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+
+      - name: Log into registry ${{ env.REGISTRY }}
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5.7.0
+        with:
+          images: ${{ env.REGISTRY }}/sbekti/${{ matrix.image }}
+          tags: |
+            # On tag push: extract version from prefixed tag (asterisk/v1.0.0 -> v1.0.0)
+            type=match,pattern=.+/(v.+),group=1,enable=${{ startsWith(github.ref, 'refs/tags/') }}
+            # Also tag as latest on version tags
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
+            # On push to main
+            type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198e19c3bc3c14 # v6.18.0
+        with:
+          context: images/${{ matrix.image }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,scope=${{ matrix.image }},mode=max
+
+      - name: Sign the published Docker image
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          DIGEST: ${{ steps.build-and-push.outputs.digest }}
+        run: echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
