@@ -1,4 +1,10 @@
 name: Docker
+run-name: >-
+  ${{
+    github.event_name == 'workflow_dispatch' && format('Build {0} (manual)', inputs.image) ||
+    startsWith(github.ref, 'refs/tags/') && format('Build {0}', github.ref_name) ||
+    format('Build changed images ({0})', github.sha)
+  }}
 
 on:
   push:
