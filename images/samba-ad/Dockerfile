@@ -6,9 +6,11 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install Samba and related tools
 # dnsutils: for testing DNS resolution (dig/nslookup)
 # iproute2: for network interface inspection (ip/ss)
-RUN apt-get update && apt-get install -y \
-    samba-ad-dc \
-    krb5-user \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    samba=${SAMBA_VERSION} \
+    smbclient=${SAMBA_VERSION} \
+    ldap-utils \
+    winbind=${SAMBA_VERSION} \
     dnsutils \
     iproute2 \
     iputils-ping \

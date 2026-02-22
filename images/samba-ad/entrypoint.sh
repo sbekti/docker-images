@@ -69,5 +69,23 @@ else
     # overwriting our External IP with the Pod IP on scheduled runs.
 fi
 
+# Set up Kerberos for local debugging
+echo "Setting up /etc/krb5.conf for local debugging..."
+if [ -f /var/lib/samba/private/krb5.conf ]; then
+    cp /var/lib/samba/private/krb5.conf /etc/krb5.conf
+    # Patch the config to disable DNS lookup and explicitly point to localhost
+    sed -i 's/dns_lookup_kdc = true/dns_lookup_kdc = false/g' /etc/krb5.conf
+    # Add explicit KDC mapping to localhost
+    cat >> /etc/krb5.conf <<EOF
+
+[realms]
+    ${REALM} = {
+        kdc = 127.0.0.1
+        admin_server = 127.0.0.1
+        default_domain = $(echo "${REALM}" | tr '[:upper:]' '[:lower:]')
+    }
+EOF
+fi
+
 echo "Starting Samba AD DC..."
 exec samba -i --no-process-group
