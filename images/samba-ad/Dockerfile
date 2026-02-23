@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y \
     iputils-ping \
     ca-certificates \
     libsasl2-modules-gssapi-mit \
+    openssl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

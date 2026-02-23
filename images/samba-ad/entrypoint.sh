@@ -20,6 +20,11 @@ set -e
 : "${PWD_MAX_AGE:=42}"
 : "${PWD_STORE_PLAINTEXT:=off}"
 
+# TLS defaults
+: "${TLS_ENABLED:=no}"
+: "${TLS_CERTFILE:=/etc/samba/tls/tls.crt}"
+: "${TLS_KEYFILE:=/etc/samba/tls/tls.key}"
+
 # Log resolved configuration
 echo "=== Samba AD DC Configuration ==="
 echo "  REALM:         ${REALM}"
@@ -29,6 +34,9 @@ echo "  EXTERNAL_IP:   ${EXTERNAL_IP}"
 echo "  DNS_FORWARDER: ${DNS_FORWARDER}"
 echo "  RPC_PORTS:     ${RPC_PORT_START}-${RPC_PORT_END}"
 echo "  DNS_UPDATE:    ${DNS_UPDATE_MODE}"
+echo "  TLS_ENABLED:   ${TLS_ENABLED}"
+echo "  TLS_CERTFILE:  ${TLS_CERTFILE}"
+echo "  TLS_KEYFILE:   ${TLS_KEYFILE}"
 echo "================================="
 
 # Set the system hostname to match the NetBIOS name
@@ -81,6 +89,18 @@ else
     
     # "dns update command = /usr/bin/true" prevents samba_dnsupdate from 
     # overwriting our External IP with the Pod IP on scheduled runs.
+fi
+
+# Configure TLS in smb.conf (runs every start to ensure settings are always current)
+if [ "${TLS_ENABLED}" = "yes" ]; then
+    echo "Configuring TLS in smb.conf..."
+    # Remove any existing TLS lines to avoid duplicates on restart
+    sed -i '/^\s*tls enabled\s*=/d' /etc/samba/smb.conf
+    sed -i '/^\s*tls certfile\s*=/d' /etc/samba/smb.conf
+    sed -i '/^\s*tls keyfile\s*=/d' /etc/samba/smb.conf
+    # Inject TLS settings into [global] section right after the [global] line
+    sed -i "/^\[global\]/a\\\\ttls keyfile = ${TLS_KEYFILE}\\n\\ttls certfile = ${TLS_CERTFILE}\\n\\ttls enabled = yes" /etc/samba/smb.conf
+    echo "TLS configured: certfile=${TLS_CERTFILE}, keyfile=${TLS_KEYFILE}"
 fi
 
 # Set up Kerberos for local debugging
