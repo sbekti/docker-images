@@ -24,6 +24,7 @@ set -e
 : "${TLS_ENABLED:=no}"
 : "${TLS_CERTFILE:=/etc/samba/tls/tls.crt}"
 : "${TLS_KEYFILE:=/etc/samba/tls/tls.key}"
+: "${TLS_CAFILE:=}"
 
 # Log resolved configuration
 echo "=== Samba AD DC Configuration ==="
@@ -37,6 +38,7 @@ echo "  DNS_UPDATE:    ${DNS_UPDATE_MODE}"
 echo "  TLS_ENABLED:   ${TLS_ENABLED}"
 echo "  TLS_CERTFILE:  ${TLS_CERTFILE}"
 echo "  TLS_KEYFILE:   ${TLS_KEYFILE}"
+echo "  TLS_CAFILE:    ${TLS_CAFILE:-<empty>}"
 echo "================================="
 
 # Set the system hostname to match the NetBIOS name
@@ -98,9 +100,10 @@ if [ "${TLS_ENABLED}" = "yes" ]; then
     sed -i '/^\s*tls enabled\s*=/d' /etc/samba/smb.conf
     sed -i '/^\s*tls certfile\s*=/d' /etc/samba/smb.conf
     sed -i '/^\s*tls keyfile\s*=/d' /etc/samba/smb.conf
+    sed -i '/^\s*tls cafile\s*=/d' /etc/samba/smb.conf
     # Inject TLS settings into [global] section right after the [global] line
-    sed -i "/^\[global\]/a\\\\ttls keyfile = ${TLS_KEYFILE}\\n\\ttls certfile = ${TLS_CERTFILE}\\n\\ttls enabled = yes" /etc/samba/smb.conf
-    echo "TLS configured: certfile=${TLS_CERTFILE}, keyfile=${TLS_KEYFILE}"
+    sed -i "/^\[global\]/a\\\\ttls cafile = ${TLS_CAFILE}\\n\\ttls keyfile = ${TLS_KEYFILE}\\n\\ttls certfile = ${TLS_CERTFILE}\\n\\ttls enabled = yes" /etc/samba/smb.conf
+    echo "TLS configured: certfile=${TLS_CERTFILE}, keyfile=${TLS_KEYFILE}, cafile=${TLS_CAFILE:-<empty>}"
 fi
 
 # Set up Kerberos for local debugging
