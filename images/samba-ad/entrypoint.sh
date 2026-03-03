@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# Default variables
+# Runtime defaults (override with environment variables)
 : "${REALM:=EXAMPLE.COM}"
 : "${DOMAIN:=EXAMPLE}"
 : "${ADMIN_PASS:=Passw0rd}"
@@ -11,6 +11,7 @@ set -e
 : "${DNS_UPDATE_MODE:=nonsecure and secure}"
 : "${NETBIOS_NAME:=DC1}"
 : "${EXTERNAL_IP:=127.0.0.1}"
+: "${NTLM_AUTH:=no}"
 
 # Password policy defaults
 : "${PWD_COMPLEXITY:=on}"
@@ -35,6 +36,7 @@ echo "  EXTERNAL_IP:   ${EXTERNAL_IP}"
 echo "  DNS_FORWARDER: ${DNS_FORWARDER}"
 echo "  RPC_PORTS:     ${RPC_PORT_START}-${RPC_PORT_END}"
 echo "  DNS_UPDATE:    ${DNS_UPDATE_MODE}"
+echo "  NTLM_AUTH:     ${NTLM_AUTH}"
 echo "  TLS_ENABLED:   ${TLS_ENABLED}"
 echo "  TLS_CERTFILE:  ${TLS_CERTFILE}"
 echo "  TLS_KEYFILE:   ${TLS_KEYFILE}"
@@ -48,32 +50,30 @@ if [ "$(hostname)" != "${NETBIOS_NAME}" ]; then
     echo "WARNING: Failed to set hostname to ${NETBIOS_NAME}. Running as $(hostname)." >&2
 fi
 
-# Fix testparm warning about lock directory permissions
-# /run/samba is created at runtime by samba package init scripts
+# Keep lock directory permissions compatible with Samba's startup checks.
+# /run/samba is created at runtime by package init scripts.
 if [ -d /run/samba ]; then
     chmod 0755 /run/samba
 fi
 
-# Clean up /etc/hosts to remove Docker's internal IP entry for the hostname
-# This ensures local resolution uses the External IP we inject
+# Ensure local hostname resolution uses EXTERNAL_IP instead of a container-internal IP.
 if ! grep -q "^${EXTERNAL_IP}.*${NETBIOS_NAME}" /etc/hosts; then
     echo "Patching /etc/hosts..."
-    # Read existing hosts, excluding lines ending with our hostname (internal IP mappings)
+    # Drop existing hostname mappings and rebuild with the desired external mapping first.
     EXISTING_HOSTS=$(grep -v "[[:space:]]${NETBIOS_NAME}$" /etc/hosts)
     
-    # Prepend our External IP mapping and overwrite the file
+    # Prepend external mapping and overwrite the file.
     echo "${EXTERNAL_IP} ${NETBIOS_NAME}.${REALM} ${NETBIOS_NAME}"$'\n'"${EXISTING_HOSTS}" > /etc/hosts
 fi
 
-# Check if domain is already provisioned
+# Provision once; reuse persisted domain state on subsequent starts.
 if [ -f /var/lib/samba/private/secrets.keytab ]; then
     echo "Domain already provisioned."
 else
     echo "Provisioning domain..."
     rm -f /etc/samba/smb.conf
     
-    # Run provisioning
-    # --host-ip: Forces the initial DNS A record to the External IP
+    # --host-ip forces the initial DNS A record to EXTERNAL_IP.
     samba-tool domain provision \
         --server-role=dc \
         --use-rfc2307 \
@@ -86,11 +86,11 @@ else
         --option="netbios name = ${NETBIOS_NAME}" \
         --option="rpc server port = ${RPC_PORT_START}-${RPC_PORT_END}" \
         --option="allow dns updates = ${DNS_UPDATE_MODE}" \
+        --option="ntlm auth = ${NTLM_AUTH}" \
         --option="ldap server require strong auth = no" \
         --option="dns update command = /usr/bin/true"
     
-    # "dns update command = /usr/bin/true" prevents samba_dnsupdate from 
-    # overwriting our External IP with the Pod IP on scheduled runs.
+    # Keep scheduled samba_dnsupdate from replacing the external DNS A record.
 fi
 
 # Configure TLS in smb.conf (runs every start to ensure settings are always current)
@@ -106,20 +106,15 @@ if [ "${TLS_ENABLED}" = "yes" ]; then
     echo "TLS configured: certfile=${TLS_CERTFILE}, keyfile=${TLS_KEYFILE}, cafile=${TLS_CAFILE:-<empty>}"
 fi
 
-# Set up Kerberos for local debugging
-# samba-tool generates /var/lib/samba/private/krb5.conf with dns_lookup_kdc = true,
-# which breaks kinit inside the pod because K8s CoreDNS cannot resolve Kerberos SRV records.
-# Fix: copy the generated config, disable DNS-based KDC discovery, and inject explicit
-# kdc/admin_server entries into the existing [realms] block (which already has default_domain).
-# We sed-insert into the existing block to avoid creating a duplicate [realms] section.
-echo "Setting up /etc/krb5.conf for local debugging..."
+# Prepare /etc/krb5.conf for in-container Kerberos admin tools (kinit, ldapsearch, etc.).
+# The generated file prefers DNS KDC discovery, but cluster DNS often lacks Kerberos SRV records.
+# Use explicit local KDC/admin_server entries in the existing realm block.
+echo "Setting up /etc/krb5.conf for in-container Kerberos tools..."
 if [ -f /var/lib/samba/private/krb5.conf ]; then
     cp /var/lib/samba/private/krb5.conf /etc/krb5.conf
-    # Disable DNS-based KDC discovery (K8s CoreDNS can't resolve _kerberos._tcp SRV records)
+    # Force static KDC lookup for this container.
     sed -i 's/dns_lookup_kdc = true/dns_lookup_kdc = false/g' /etc/krb5.conf
-    # Insert explicit KDC address into the existing [realms] block right after "REALM = {"
-    # The generated krb5.conf already has: REALM = {\n\t\tdefault_domain = ...\n\t}
-    # We add kdc and admin_server before the existing entries.
+    # Insert local KDC/admin_server lines right after "REALM = {".
     sed -i "/^\s*${REALM} = {/a\\        kdc = 127.0.0.1\n        admin_server = 127.0.0.1" /etc/krb5.conf
 fi
 
