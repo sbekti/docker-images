@@ -1,0 +1,33 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "enabledManagers": ["dockerfile", "github-actions"],
+  "dependencyDashboard": true,
+  "automerge": false,
+  "automergeType": "pr",
+  "platformAutomerge": false,
+  "separateMinorPatch": true,
+  "timezone": "America/New_York",
+  "packageRules": [
+    {
+      "description": "Automerge grouped patch updates after validation",
+      "matchUpdateTypes": ["patch"],
+      "groupName": "all patch dependencies",
+      "schedule": ["* * * * 5"],
+      "automerge": true
+    },
+    {
+      "description": "Group minor updates for manual review on Saturdays",
+      "matchUpdateTypes": ["minor"],
+      "groupName": "all minor dependencies",
+      "schedule": ["* * * * 6"]
+    },
+    {
+      "description": "Create separate major upgrade PRs on Sundays",
+      "matchUpdateTypes": ["major"],
+      "schedule": ["* * * * 0"],
+      "commitMessageAction": "upgrade",
+      "commitMessageSuffix": "(major)"
+    }
+  ]
+}

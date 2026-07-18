@@ -10,6 +10,10 @@ on:
   push:
     branches: [main]
     tags: ['*/v*.*.*']
+  pull_request:
+    paths:
+      - 'images/**'
+      - '.github/workflows/build.yml'
   workflow_dispatch:
     inputs:
       image:
@@ -28,6 +32,9 @@ on:
 env:
   REGISTRY: ghcr.io
 
+permissions:
+  contents: read
+
 jobs:
   # ---------------------------------------------------------
   # Determine which images need to be built
@@ -41,33 +48,71 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          fetch-depth: 2
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Determine images to build
         id: set-matrix
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          SELECTED_IMAGE: ${{ inputs.image }}
         run: |
+          set -euo pipefail
+
           IMAGES=()
 
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            # Manual dispatch: build the specified image
-            IMAGES+=("${{ inputs.image }}")
-
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            IMAGES+=("$SELECTED_IMAGE")
           elif [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            # Tag push: extract image name from tag (e.g. asterisk/v1.0.0 -> asterisk)
             TAG="${GITHUB_REF#refs/tags/}"
             IMAGE_NAME="${TAG%%/*}"
             IMAGES+=("$IMAGE_NAME")
-
           else
-            # Push to main: detect changed image directories
-            CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD)
-            for dir in images/*/; do
-              IMAGE_NAME=$(basename "$dir")
-              if echo "$CHANGED_FILES" | grep -q "^images/${IMAGE_NAME}/"; then
-                IMAGES+=("$IMAGE_NAME")
+            if [[ "$EVENT_NAME" == "pull_request" ]]; then
+              BASE_SHA="$PR_BASE_SHA"
+            else
+              BASE_SHA="$PUSH_BEFORE_SHA"
+            fi
+
+            if [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]]; then
+              echo "Cannot determine a valid base commit for $EVENT_NAME." >&2
+              exit 1
+            fi
+
+            mapfile -t CHANGED_FILES < <(git diff --name-only "$BASE_SHA" "$GITHUB_SHA")
+
+            BUILD_ALL=false
+            for file in "${CHANGED_FILES[@]}"; do
+              if [[ "$file" == ".github/workflows/build.yml" ]]; then
+                BUILD_ALL=true
+                break
               fi
             done
+
+            for dir in images/*/; do
+              IMAGE_NAME=$(basename "$dir")
+              if [[ "$BUILD_ALL" == "true" ]]; then
+                IMAGES+=("$IMAGE_NAME")
+                continue
+              fi
+
+              for file in "${CHANGED_FILES[@]}"; do
+                if [[ "$file" == "images/${IMAGE_NAME}/"* ]]; then
+                  IMAGES+=("$IMAGE_NAME")
+                  break
+                fi
+              done
+            done
           fi
+
+          for image in "${IMAGES[@]}"; do
+            if [[ ! -f "images/${image}/Dockerfile" ]]; then
+              echo "Unknown image: ${image}" >&2
+              exit 1
+            fi
+          done
 
           if [ ${#IMAGES[@]} -eq 0 ]; then
             echo "matrix={\"image\":[]}" >> "$GITHUB_OUTPUT"
@@ -81,11 +126,45 @@ jobs:
           echo "Images to build: ${IMAGES[*]:-none}"
 
   # ---------------------------------------------------------
-  # Build and push images
+  # Build images on pull requests without publishing
   # ---------------------------------------------------------
   build:
     needs: detect
-    if: needs.detect.outputs.has_images == 'true'
+    if: github.event_name == 'pull_request' && needs.detect.outputs.has_images == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect.outputs.matrix) }}
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: images/${{ matrix.image }}
+          platforms: linux/amd64,linux/arm64
+          push: false
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,scope=${{ matrix.image }},mode=max
+
+  # ---------------------------------------------------------
+  # Build and publish images on main, tags, and manual runs
+  # ---------------------------------------------------------
+  publish:
+    needs: detect
+    if: github.event_name != 'pull_request' && needs.detect.outputs.has_images == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -98,9 +177,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -142,3 +226,46 @@ jobs:
           TAGS: ${{ steps.meta.outputs.tags }}
           DIGEST: ${{ steps.build-and-push.outputs.digest }}
         run: echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
+
+  # ---------------------------------------------------------
+  # One stable result for branch protection and Renovate
+  # ---------------------------------------------------------
+  gate:
+    name: Image build gate
+    if: always()
+    needs:
+      - detect
+      - build
+      - publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Verify required jobs
+        env:
+          BUILD_RESULT: ${{ needs.build.result }}
+          DETECT_RESULT: ${{ needs.detect.result }}
+          EVENT_NAME: ${{ github.event_name }}
+          HAS_IMAGES: ${{ needs.detect.outputs.has_images }}
+          PUBLISH_RESULT: ${{ needs.publish.result }}
+        run: |
+          if [[ "$DETECT_RESULT" != "success" ]]; then
+            echo "Image detection failed." >&2
+            exit 1
+          fi
+
+          if [[ "$HAS_IMAGES" != "true" ]]; then
+            echo "No images require a build."
+            exit 0
+          fi
+
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            REQUIRED_RESULT="$BUILD_RESULT"
+          else
+            REQUIRED_RESULT="$PUBLISH_RESULT"
+          fi
+
+          if [[ "$REQUIRED_RESULT" != "success" ]]; then
+            echo "Required image jobs finished with: $REQUIRED_RESULT" >&2
+            exit 1
+          fi
