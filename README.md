@@ -9,6 +9,7 @@ Docker image builds, published to `ghcr.io/sbekti/<image>`.
 | [asterisk](images/asterisk/) | Asterisk PBX |
 | [aws-cli-tgz](images/aws-cli-tgz/) | AWS CLI v2 |
 | [freeradius](images/freeradius/) | FreeRADIUS server |
+| [hermes-tools](images/hermes-tools/) | Hermes MCP tools and generic seed skills |
 | [samba-ad](images/samba-ad/) | Samba Active Directory DC |
 
 ## Usage

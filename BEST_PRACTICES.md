@@ -60,7 +60,7 @@ The `homeinfra` repository currently deploys:
 | `asterisk:v20.11.1` | Asterisk chart |
 | `aws-cli-tgz:v2.33.27` | Vaultwarden backup CronJob |
 | `freeradius:v3.2.8` | FreeRADIUS chart |
-| `samba-ad:v0.1.11` | Samba AD chart |
+| `samba-ad:v0.2.1` | Samba AD chart |
 
 ## Per-image findings
 
@@ -69,11 +69,13 @@ The `homeinfra` repository currently deploys:
 | `asterisk` | Small Alpine base; no external downloads | Alpine base is not on the current repository-wide version; packages are unpinned; runs as root | Future image-hardening stage |
 | `aws-cli-tgz` | Versioned upstream base; narrow purpose | Added `tar`, `xz`, and `gzip` packages are unpinned; runs as root | Future image-hardening stage |
 | `freeradius` | Dedicated service UID/GID exists; signed APT repository configuration | Downloaded repository key is not checked against a fingerprint; repository URL is HTTP after key bootstrap; packages are unpinned; effective runtime user depends on configuration | Future FreeRADIUS image stage |
-| `samba-ad` | Versioned releases, multi-architecture build, required configuration validation, and `testparm` before startup | Ubuntu packages are unpinned; root and privileged deployment remain | Stage 52 privilege canary; future package policy |
+| `hermes-tools` | Adds no packages; build-time Python compile/import validation; non-root runtime; no private deployment identifiers | Inherits the large upstream Hermes image and its mutable release tag | Stage 53 adoption; repository-wide base-image policy |
+| `samba-ad` | Versioned releases, multi-architecture build, required configuration validation, `testparm` before startup, and reduced deployment capabilities | Ubuntu packages are unpinned; runtime remains root | Future package/runtime hardening |
 
 ## Prioritized follow-up
 
-1. Complete Stage 51 and Stage 52 for the deployed Samba AD image.
+1. Publish and adopt the Hermes tools image without exposing private
+   deployment identifiers.
 2. Add immutable Action pinning, explicit SBOM/provenance attestations, and
    verification.
 3. Document and enforce base/package, release-validation, and retention

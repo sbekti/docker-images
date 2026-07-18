@@ -24,6 +24,7 @@ on:
           - asterisk
           - aws-cli-tgz
           - freeradius
+          - hermes-tools
           - samba-ad
 
 env:
