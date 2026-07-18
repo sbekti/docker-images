@@ -31,12 +31,6 @@ if [[ -z "${ADMIN_PASS:-}" ]]; then
     exit 1
 fi
 
-runtime_hostname="$(hostname -s)"
-if [[ "${runtime_hostname,,}" != "${NETBIOS_NAME,,}" ]]; then
-    echo "ERROR: Container hostname '${runtime_hostname}' must match NETBIOS_NAME '${NETBIOS_NAME}' case-insensitively." >&2
-    exit 1
-fi
-
 # Log resolved configuration
 echo "=== Samba AD DC Configuration ==="
 echo "  REALM:         ${REALM}"
@@ -73,6 +67,7 @@ else
         --dns-backend=SAMBA_INTERNAL \
         --realm="${REALM}" \
         --domain="${DOMAIN}" \
+        --host-name="${NETBIOS_NAME}" \
         --adminpass="${ADMIN_PASS}" \
         --host-ip="${EXTERNAL_IP}" \
         --option="dns forwarder = ${DNS_FORWARDER}" \
