@@ -23,10 +23,7 @@ on:
         options:
           - asterisk
           - aws-cli-tgz
-          - dnsmasq
           - freeradius
-          - novnc
-          - openldap
           - samba-ad
 
 env:

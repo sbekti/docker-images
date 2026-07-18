@@ -8,10 +8,7 @@ Docker image builds, published to `ghcr.io/sbekti/<image>`.
 |-------|-------------|
 | [asterisk](images/asterisk/) | Asterisk PBX |
 | [aws-cli-tgz](images/aws-cli-tgz/) | AWS CLI v2 |
-| [dnsmasq](images/dnsmasq/) | dnsmasq DNS/DHCP server |
 | [freeradius](images/freeradius/) | FreeRADIUS server |
-| [novnc](images/novnc/) | noVNC web client |
-| [openldap](images/openldap/) | OpenLDAP server |
 | [samba-ad](images/samba-ad/) | Samba Active Directory DC |
 
 ## Usage
