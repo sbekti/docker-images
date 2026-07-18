@@ -1,11 +1,10 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # Runtime defaults (override with environment variables)
 : "${REALM:=EXAMPLE.COM}"
 : "${DOMAIN:=EXAMPLE}"
-: "${ADMIN_PASS:=Passw0rd}"
-: "${DNS_FORWARDER:=8.8.8.8}"
+: "${DNS_FORWARDER:=1.1.1.1 1.0.0.1}"
 : "${RPC_PORT_START:=50000}"
 : "${RPC_PORT_END:=50019}"
 : "${DNS_UPDATE_MODE:=nonsecure and secure}"
@@ -27,6 +26,17 @@ set -e
 : "${TLS_KEYFILE:=/etc/samba/tls/tls.key}"
 : "${TLS_CAFILE:=}"
 
+if [[ -z "${ADMIN_PASS:-}" ]]; then
+    echo "ERROR: ADMIN_PASS is required." >&2
+    exit 1
+fi
+
+runtime_hostname="$(hostname -s)"
+if [[ "${runtime_hostname,,}" != "${NETBIOS_NAME,,}" ]]; then
+    echo "ERROR: Container hostname '${runtime_hostname}' must match NETBIOS_NAME '${NETBIOS_NAME}' case-insensitively." >&2
+    exit 1
+fi
+
 # Log resolved configuration
 echo "=== Samba AD DC Configuration ==="
 echo "  REALM:         ${REALM}"
@@ -43,27 +53,10 @@ echo "  TLS_KEYFILE:   ${TLS_KEYFILE}"
 echo "  TLS_CAFILE:    ${TLS_CAFILE:-<empty>}"
 echo "================================="
 
-# Set the system hostname to match the NetBIOS name
-echo "Setting system hostname to ${NETBIOS_NAME}..."
-hostname "${NETBIOS_NAME}"
-if [ "$(hostname)" != "${NETBIOS_NAME}" ]; then
-    echo "WARNING: Failed to set hostname to ${NETBIOS_NAME}. Running as $(hostname)." >&2
-fi
-
 # Keep lock directory permissions compatible with Samba's startup checks.
 # /run/samba is created at runtime by package init scripts.
 if [ -d /run/samba ]; then
     chmod 0755 /run/samba
-fi
-
-# Ensure local hostname resolution uses EXTERNAL_IP instead of a container-internal IP.
-if ! grep -q "^${EXTERNAL_IP}.*${NETBIOS_NAME}" /etc/hosts; then
-    echo "Patching /etc/hosts..."
-    # Drop existing hostname mappings and rebuild with the desired external mapping first.
-    EXISTING_HOSTS=$(grep -v "[[:space:]]${NETBIOS_NAME}$" /etc/hosts)
-    
-    # Prepend external mapping and overwrite the file.
-    echo "${EXTERNAL_IP} ${NETBIOS_NAME}.${REALM} ${NETBIOS_NAME}"$'\n'"${EXISTING_HOSTS}" > /etc/hosts
 fi
 
 # Provision once; reuse persisted domain state on subsequent starts.
@@ -93,6 +86,20 @@ else
     # Keep scheduled samba_dnsupdate from replacing the external DNS A record.
 fi
 
+if [[ ! -f /etc/samba/smb.conf ]]; then
+    echo "ERROR: /etc/samba/smb.conf is missing after provisioning." >&2
+    exit 1
+fi
+
+if [[ "${DNS_FORWARDER}" == *$'\n'* || "${DNS_FORWARDER}" == *$'\r'* ]]; then
+    echo "ERROR: DNS_FORWARDER must be a single line." >&2
+    exit 1
+fi
+
+# Reconcile the forwarder for both new and persisted domains.
+sed -i -E '/^[[:space:]]*dns forwarder[[:space:]]*=/d' /etc/samba/smb.conf
+sed -i "/^\\[global\\][[:space:]]*$/a\\\\tdns forwarder = ${DNS_FORWARDER}" /etc/samba/smb.conf
+
 # Configure TLS in smb.conf (runs every start to ensure settings are always current)
 if [ "${TLS_ENABLED}" = "yes" ]; then
     echo "Configuring TLS in smb.conf..."
@@ -104,6 +111,13 @@ if [ "${TLS_ENABLED}" = "yes" ]; then
     # Inject TLS settings into [global] section right after the [global] line
     sed -i "/^\[global\]/a\\\\ttls cafile = ${TLS_CAFILE}\\n\\ttls keyfile = ${TLS_KEYFILE}\\n\\ttls certfile = ${TLS_CERTFILE}\\n\\ttls enabled = yes" /etc/samba/smb.conf
     echo "TLS configured: certfile=${TLS_CERTFILE}, keyfile=${TLS_KEYFILE}, cafile=${TLS_CAFILE:-<empty>}"
+fi
+
+testparm -s /etc/samba/smb.conf >/dev/null
+effective_netbios_name="$(testparm -s --parameter-name='netbios name' 2>/dev/null)"
+if [[ "${effective_netbios_name,,}" != "${NETBIOS_NAME,,}" ]]; then
+    echo "ERROR: smb.conf netbios name '${effective_netbios_name}' does not match NETBIOS_NAME '${NETBIOS_NAME}'." >&2
+    exit 1
 fi
 
 # Prepare /etc/krb5.conf for in-container Kerberos admin tools (kinit, ldapsearch, etc.).
@@ -120,12 +134,12 @@ fi
 
 # Apply password policy settings
 echo "Applying password policy..."
-samba-tool domain passwordsettings set --complexity="${PWD_COMPLEXITY}" 2>/dev/null || true
-samba-tool domain passwordsettings set --min-pwd-length="${PWD_MIN_LENGTH}" 2>/dev/null || true
-samba-tool domain passwordsettings set --history-length="${PWD_HISTORY}" 2>/dev/null || true
-samba-tool domain passwordsettings set --min-pwd-age="${PWD_MIN_AGE}" 2>/dev/null || true
-samba-tool domain passwordsettings set --max-pwd-age="${PWD_MAX_AGE}" 2>/dev/null || true
-samba-tool domain passwordsettings set --store-plaintext="${PWD_STORE_PLAINTEXT}" 2>/dev/null || true
+samba-tool domain passwordsettings set --complexity="${PWD_COMPLEXITY}"
+samba-tool domain passwordsettings set --min-pwd-length="${PWD_MIN_LENGTH}"
+samba-tool domain passwordsettings set --history-length="${PWD_HISTORY}"
+samba-tool domain passwordsettings set --min-pwd-age="${PWD_MIN_AGE}"
+samba-tool domain passwordsettings set --max-pwd-age="${PWD_MAX_AGE}"
+samba-tool domain passwordsettings set --store-plaintext="${PWD_STORE_PLAINTEXT}"
 echo "Password policy applied."
 
 echo "Starting Samba AD DC..."

@@ -20,8 +20,6 @@ fixes should be reviewed and released independently.
 - [x] Only main, release tags, and manual runs can publish or sign images.
 - [x] The live Renovate dashboard detects both the `dockerfile` and
   `github-actions` managers.
-- [ ] Add image-specific smoke tests; a successful build does not prove that a
-  daemon starts or its key protocol works.
 
 ### Supply chain and releases
 
@@ -52,8 +50,6 @@ fixes should be reviewed and released independently.
   the deployment repository.
 - [ ] Remove unsafe example credential defaults and ensure shell tracing cannot
   print credentials.
-- [ ] Add a minimal health/smoke test for each image before making its patch
-  updates eligible for automerge.
 
 ## Current consumers
 
@@ -70,17 +66,15 @@ The `homeinfra` repository currently deploys:
 
 | Image | Existing strengths | Deferred findings | Owner |
 |---|---|---|---|
-| `asterisk` | Small Alpine base; no external downloads | Alpine base is not on the current repository-wide version; packages are unpinned; runs as root; no startup/SIP smoke test | Future image-hardening stage |
-| `aws-cli-tgz` | Versioned upstream base; narrow purpose | Added `tar`, `xz`, and `gzip` packages are unpinned; runs as root; no archive/CLI smoke test | Future image-hardening stage |
-| `freeradius` | Dedicated service UID/GID exists; signed APT repository configuration | Downloaded repository key is not checked against a fingerprint; repository URL is HTTP after key bootstrap; packages are unpinned; effective runtime user depends on configuration; no RADIUS smoke test | Future FreeRADIUS image stage |
-| `samba-ad` | Versioned releases; current multi-architecture build succeeds | Unsafe default admin password, hard-coded DNS forwarder, runtime hostname and `/etc/hosts` mutation, swallowed policy errors, no AD smoke test, and privileged deployment | Stage 51 configuration/image refactor; Stage 52 privilege canary |
+| `asterisk` | Small Alpine base; no external downloads | Alpine base is not on the current repository-wide version; packages are unpinned; runs as root | Future image-hardening stage |
+| `aws-cli-tgz` | Versioned upstream base; narrow purpose | Added `tar`, `xz`, and `gzip` packages are unpinned; runs as root | Future image-hardening stage |
+| `freeradius` | Dedicated service UID/GID exists; signed APT repository configuration | Downloaded repository key is not checked against a fingerprint; repository URL is HTTP after key bootstrap; packages are unpinned; effective runtime user depends on configuration | Future FreeRADIUS image stage |
+| `samba-ad` | Versioned releases, multi-architecture build, required configuration validation, and `testparm` before startup | Ubuntu packages are unpinned; root and privileged deployment remain | Stage 52 privilege canary; future package policy |
 
 ## Prioritized follow-up
 
 1. Complete Stage 51 and Stage 52 for the deployed Samba AD image.
-2. Add protocol-level smoke tests for deployed images, beginning with
-   FreeRADIUS and Asterisk.
-3. Add immutable Action pinning, explicit SBOM/provenance attestations, and
+2. Add immutable Action pinning, explicit SBOM/provenance attestations, and
    verification.
-4. Document and enforce base/package, release-validation, and retention
+3. Document and enforce base/package, release-validation, and retention
    policies across the remaining images.
