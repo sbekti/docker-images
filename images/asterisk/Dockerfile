@@ -1,4 +1,4 @@
-FROM    alpine:3.21
+FROM    alpine:3.24
 LABEL   maintainer=samudra.bekti@gmail.com
 
 RUN     apk --no-cache --update add \
