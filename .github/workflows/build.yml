@@ -149,7 +149,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build Docker image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: images/${{ matrix.image }}
           platforms: linux/amd64,linux/arm64
@@ -209,7 +209,7 @@ jobs:
 
       - name: Build and push Docker image
         id: build-and-push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: images/${{ matrix.image }}
           platforms: linux/amd64,linux/arm64
