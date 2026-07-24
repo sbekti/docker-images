@@ -1,4 +1,4 @@
-FROM nousresearch/hermes-agent:v2026.7.7
+FROM nousresearch/hermes-agent:v2026.7.20
 
 ENV HERMES_TOOLS_MCP_HOST=0.0.0.0 \
     HERMES_TOOLS_MCP_PORT=9101 \
