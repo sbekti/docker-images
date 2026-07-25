@@ -9,6 +9,7 @@ set -euo pipefail
 : "${RPC_PORT_END:=50019}"
 : "${DNS_UPDATE_MODE:=nonsecure and secure}"
 : "${NETBIOS_NAME:=DC1}"
+: "${DNS_HOSTNAME:=${NETBIOS_NAME,,}.${REALM,,}}"
 : "${EXTERNAL_IP:=127.0.0.1}"
 : "${NTLM_AUTH:=no}"
 
@@ -36,6 +37,7 @@ echo "=== Samba AD DC Configuration ==="
 echo "  REALM:         ${REALM}"
 echo "  DOMAIN:        ${DOMAIN}"
 echo "  NETBIOS_NAME:  ${NETBIOS_NAME}"
+echo "  DNS_HOSTNAME:  ${DNS_HOSTNAME}"
 echo "  EXTERNAL_IP:   ${EXTERNAL_IP}"
 echo "  DNS_FORWARDER: ${DNS_FORWARDER}"
 echo "  RPC_PORTS:     ${RPC_PORT_START}-${RPC_PORT_END}"
@@ -72,6 +74,7 @@ else
         --host-ip="${EXTERNAL_IP}" \
         --option="dns forwarder = ${DNS_FORWARDER}" \
         --option="netbios name = ${NETBIOS_NAME}" \
+        --option="dns hostname = ${DNS_HOSTNAME}" \
         --option="rpc server port = ${RPC_PORT_START}-${RPC_PORT_END}" \
         --option="allow dns updates = ${DNS_UPDATE_MODE}" \
         --option="ntlm auth = ${NTLM_AUTH}" \
@@ -94,6 +97,10 @@ if [[ "${DNS_UPDATE_MODE}" == *$'\n'* || "${DNS_UPDATE_MODE}" == *$'\r'* ]]; the
     echo "ERROR: DNS_UPDATE_MODE must be a single line." >&2
     exit 1
 fi
+if [[ "${DNS_HOSTNAME}" == *$'\n'* || "${DNS_HOSTNAME}" == *$'\r'* ]]; then
+    echo "ERROR: DNS_HOSTNAME must be a single line." >&2
+    exit 1
+fi
 
 # Reconcile the forwarder for both new and persisted domains.
 sed -i -E '/^[[:space:]]*dns forwarder[[:space:]]*=/d' /etc/samba/smb.conf
@@ -102,6 +109,10 @@ sed -i "/^\\[global\\][[:space:]]*$/a\\\\tdns forwarder = ${DNS_FORWARDER}" /etc
 # Reconcile the DNS update policy for both new and persisted domains.
 sed -i -E '/^[[:space:]]*allow dns updates[[:space:]]*=/d' /etc/samba/smb.conf
 sed -i "/^\\[global\\][[:space:]]*$/a\\\\tallow dns updates = ${DNS_UPDATE_MODE}" /etc/samba/smb.conf
+
+# Keep the DNS identity lowercase while preserving Samba's uppercase NetBIOS name.
+sed -i -E '/^[[:space:]]*dns hostname[[:space:]]*=/d' /etc/samba/smb.conf
+sed -i "/^\\[global\\][[:space:]]*$/a\\\\tdns hostname = ${DNS_HOSTNAME}" /etc/samba/smb.conf
 
 # Configure TLS in smb.conf (runs every start to ensure settings are always current)
 if [ "${TLS_ENABLED}" = "yes" ]; then
