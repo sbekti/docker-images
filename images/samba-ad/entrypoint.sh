@@ -90,10 +90,18 @@ if [[ "${DNS_FORWARDER}" == *$'\n'* || "${DNS_FORWARDER}" == *$'\r'* ]]; then
     echo "ERROR: DNS_FORWARDER must be a single line." >&2
     exit 1
 fi
+if [[ "${DNS_UPDATE_MODE}" == *$'\n'* || "${DNS_UPDATE_MODE}" == *$'\r'* ]]; then
+    echo "ERROR: DNS_UPDATE_MODE must be a single line." >&2
+    exit 1
+fi
 
 # Reconcile the forwarder for both new and persisted domains.
 sed -i -E '/^[[:space:]]*dns forwarder[[:space:]]*=/d' /etc/samba/smb.conf
 sed -i "/^\\[global\\][[:space:]]*$/a\\\\tdns forwarder = ${DNS_FORWARDER}" /etc/samba/smb.conf
+
+# Reconcile the DNS update policy for both new and persisted domains.
+sed -i -E '/^[[:space:]]*allow dns updates[[:space:]]*=/d' /etc/samba/smb.conf
+sed -i "/^\\[global\\][[:space:]]*$/a\\\\tallow dns updates = ${DNS_UPDATE_MODE}" /etc/samba/smb.conf
 
 # Configure TLS in smb.conf (runs every start to ensure settings are always current)
 if [ "${TLS_ENABLED}" = "yes" ]; then
