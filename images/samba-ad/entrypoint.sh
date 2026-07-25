@@ -69,7 +69,7 @@ else
         --dns-backend=SAMBA_INTERNAL \
         --realm="${REALM}" \
         --domain="${DOMAIN}" \
-        --host-name="${NETBIOS_NAME}" \
+        --host-name="${DNS_HOSTNAME%%.*}" \
         --adminpass="${ADMIN_PASS}" \
         --host-ip="${EXTERNAL_IP}" \
         --option="dns forwarder = ${DNS_FORWARDER}" \
