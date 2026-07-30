@@ -17,6 +17,10 @@ Policy:
 The image extends `ghcr.io/sbekti/freeradius:v3.2.8`. It adds no custom
 entrypoint, database, or persistent state.
 
+The published `radius-proxy:v1.0.0` image reports FreeRADIUS 3.2.5 at runtime,
+matching the current IAD2 service. Rebuilding both services on 3.2.8 is
+deferred; the image tag alone must not be treated as the daemon version.
+
 ## Environment
 
 | Variable | Purpose |
