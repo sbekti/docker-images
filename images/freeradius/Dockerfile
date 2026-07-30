@@ -8,6 +8,7 @@ RUN groupadd -g ${freerad_gid} -r freerad \
  && useradd -u ${freerad_uid} -g freerad -r -M -d /etc/freeradius -s /usr/sbin/nologin freerad \
  && apt-get update \
  && apt-get install -y \
+      curl \
       freeradius \
       freeradius-ldap \
       freeradius-postgresql \
