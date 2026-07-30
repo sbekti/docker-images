@@ -1,6 +1,6 @@
 # RADIUS proxy
 
-A small, stateless FreeRADIUS authentication proxy.
+A small, stateless FreeRADIUS authentication and accounting proxy.
 
 Policy:
 
@@ -13,13 +13,15 @@ Policy:
 - When both non-EAP authorities are marked dead, a local fallback returns the
   default VLAN.
 - Primary Status-Server probes restore the preferred path after an outage.
+- Accounting goes only to the primary. If it is unavailable, the proxy does
+  not respond so the NAS can retry.
 
 The image extends `ghcr.io/sbekti/freeradius:v3.2.8`. It adds no custom
 entrypoint, database, or persistent state.
 
-The published `radius-proxy:v1.0.0` image reports FreeRADIUS 3.2.5 at runtime,
-matching the current IAD2 service. Rebuilding both services on 3.2.8 is
-deferred; the image tag alone must not be treated as the daemon version.
+`radius-proxy:v1.0.0` is the authentication-only release. Version `v1.1.0`
+adds stateless accounting proxying. Both use the corrected Ubuntu 26.04-based
+FreeRADIUS 3.2.8 image.
 
 ## Environment
 
@@ -30,9 +32,11 @@ deferred; the image tag alone must not be treated as the daemon version.
 | `RADIUS_CLIENT_REQUIRE_MESSAGE_AUTHENTICATOR` | Require Attribute 80 from downstream clients; default `yes` |
 | `RADIUS_LISTEN_ADDRESS` | Authentication listener address; default `*` |
 | `RADIUS_LISTEN_PORT` | Authentication listener port; default `1812` |
+| `RADIUS_ACCOUNTING_LISTEN_PORT` | Accounting listener port; default `1813` |
 | `RADIUS_CLEANUP_DELAY` | Seconds to cache a completed request; default `0` so exact retransmissions can fail over |
 | `RADIUS_PRIMARY_ADDRESS` | Preferred RADIUS server |
 | `RADIUS_PRIMARY_PORT` | Primary authentication port; default `1812` |
+| `RADIUS_PRIMARY_ACCOUNTING_PORT` | Primary accounting port; default `1813` |
 | `RADIUS_PRIMARY_SECRET` | Proxy-to-primary shared secret |
 | `RADIUS_SECONDARY_ADDRESS` | Secondary RADIUS server |
 | `RADIUS_SECONDARY_PORT` | Secondary authentication port; default `1812` |

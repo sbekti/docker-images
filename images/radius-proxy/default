@@ -5,6 +5,12 @@ server default {
         port = $ENV{RADIUS_LISTEN_PORT}
     }
 
+    listen {
+        type = acct
+        ipaddr = $ENV{RADIUS_LISTEN_ADDRESS}
+        port = $ENV{RADIUS_ACCOUNTING_LISTEN_PORT}
+    }
+
     authorize {
         if (&EAP-Message) {
             update control {
@@ -15,6 +21,12 @@ server default {
             update control {
                 Proxy-To-Realm := "failover"
             }
+        }
+    }
+
+    accounting {
+        update control {
+            Proxy-To-Realm := "accounting"
         }
     }
 
@@ -37,6 +49,10 @@ server default {
         }
 
         Post-Proxy-Type Fail-Authentication {
+            do_not_respond
+        }
+
+        Post-Proxy-Type Fail-Accounting {
             do_not_respond
         }
     }
