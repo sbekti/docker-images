@@ -25,6 +25,7 @@ on:
           - aws-cli-tgz
           - freeradius
           - hermes-tools
+          - radius-proxy
           - samba-ad
 
 env:

@@ -1,0 +1,62 @@
+server default {
+    listen {
+        type = auth
+        ipaddr = $ENV{RADIUS_LISTEN_ADDRESS}
+        port = $ENV{RADIUS_LISTEN_PORT}
+    }
+
+    authorize {
+        if (&EAP-Message) {
+            update control {
+                Proxy-To-Realm := "primary-only"
+            }
+        }
+        else {
+            update control {
+                Proxy-To-Realm := "failover"
+            }
+        }
+    }
+
+    pre-proxy {
+    }
+
+    post-proxy {
+        if (&control:Proxy-To-Realm == "failover") {
+            if (&Response-Packet-Type == Access-Reject) {
+                update control {
+                    &Response-Packet-Type := Access-Accept
+                }
+                update reply {
+                    Tunnel-Type := VLAN
+                    Tunnel-Medium-Type := IEEE-802
+                    Tunnel-Private-Group-Id := "$ENV{RADIUS_DEFAULT_VLAN}"
+                }
+                handled
+            }
+        }
+
+        Post-Proxy-Type Fail-Authentication {
+            do_not_respond
+        }
+    }
+}
+
+server default-access {
+    authorize {
+        update control {
+            Auth-Type := Accept
+        }
+        update reply {
+            Tunnel-Type := VLAN
+            Tunnel-Medium-Type := IEEE-802
+            Tunnel-Private-Group-Id := "$ENV{RADIUS_DEFAULT_VLAN}"
+        }
+    }
+
+    authenticate {
+        Auth-Type Accept {
+            accept
+        }
+    }
+}

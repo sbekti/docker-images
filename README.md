@@ -10,6 +10,7 @@ Docker image builds, published to `ghcr.io/sbekti/<image>`.
 | [aws-cli-tgz](images/aws-cli-tgz/) | AWS CLI v2 |
 | [freeradius](images/freeradius/) | FreeRADIUS server |
 | [hermes-tools](images/hermes-tools/) | Hermes MCP tools and generic seed skills |
+| [radius-proxy](images/radius-proxy/) | Ordered RADIUS authentication proxy |
 | [samba-ad](images/samba-ad/) | Samba Active Directory DC |
 
 ## Usage
