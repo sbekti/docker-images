@@ -21,6 +21,7 @@ on:
         required: true
         type: choice
         options:
+          - actual-cli
           - asterisk
           - aws-cli-tgz
           - freeradius
