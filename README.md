@@ -6,6 +6,7 @@ Docker image builds, published to `ghcr.io/sbekti/<image>`.
 
 | Image | Description |
 |-------|-------------|
+| [actual-cli](images/actual-cli/) | Official Actual Budget CLI for scheduled bank sync |
 | [asterisk](images/asterisk/) | Asterisk PBX |
 | [aws-cli-tgz](images/aws-cli-tgz/) | AWS CLI v2 |
 | [freeradius](images/freeradius/) | Ubuntu 26.04-based FreeRADIUS 3.2.8 server |
