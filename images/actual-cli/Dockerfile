@@ -1,4 +1,4 @@
-FROM node:24.18.1-bookworm-slim
+FROM node:24.19.0-bookworm-slim
 
 ARG ACTUAL_CLI_VERSION=26.8.0
 
