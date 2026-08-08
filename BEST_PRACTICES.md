@@ -1,6 +1,6 @@
 # Container image best-practices audit
 
-This is the repository checklist and findings inventory as of 2026-07-18.
+This is the repository checklist and findings inventory as of 2026-08-08.
 It records work; it does not silently change image behavior. Image-specific
 fixes should be reviewed and released independently.
 
@@ -57,26 +57,31 @@ The `homeinfra` repository currently deploys:
 
 | Image | Consumer |
 |---|---|
+| `actual-cli:v26.8.0` | Actual Budget bank-sync CronJob |
 | `asterisk:v20.11.1` | Asterisk chart |
-| `aws-cli-tgz:v2.33.27` | Vaultwarden backup CronJob |
 | `freeradius:v3.2.8` | FreeRADIUS chart |
-| `samba-ad:v0.2.1` | Samba AD chart |
+| `hermes-tools:v0.1.0` | Hermes tools sidecar |
+| `radius-proxy:v1.1.0` | JFK1 RouterOS RADIUS proxy container |
+| `samba-ad:v0.3.2` | Samba AD chart |
+
+Vaultwarden no longer consumes `aws-cli-tgz`; its CronJob uses the external
+`ttionya/vaultwarden-backup:1.27.0` image.
 
 ## Per-image findings
 
 | Image | Existing strengths | Deferred findings | Owner |
 |---|---|---|---|
+| `actual-cli` | Dedicated image, non-root runtime, versioned upstream CLI package | Node base and npm dependency are mutable; no explicit package integrity check | Future image-hardening stage |
 | `asterisk` | Small Alpine base; no external downloads | Alpine base is not on the current repository-wide version; packages are unpinned; runs as root | Future image-hardening stage |
-| `aws-cli-tgz` | Versioned upstream base; narrow purpose | Added `tar`, `xz`, and `gzip` packages are unpinned; runs as root | Future image-hardening stage |
+| `aws-cli-tgz` | Versioned upstream base; narrow purpose | No current `homeinfra` consumer; added packages are unpinned; runs as root | Candidate for deprecation |
 | `freeradius` | Dedicated service UID/GID exists; signed APT repository configuration | Downloaded repository key is not checked against a fingerprint; repository URL is HTTP after key bootstrap; packages are unpinned; effective runtime user depends on configuration | Future FreeRADIUS image stage |
 | `hermes-tools` | Adds no packages; build-time Python compile/import validation; non-root runtime; no private deployment identifiers | Inherits the large upstream Hermes image and its mutable release tag | Stage 53 adoption; repository-wide base-image policy |
+| `radius-proxy` | Reuses the signed FreeRADIUS base; versioned authentication/accounting behavior | Runtime remains coupled to the FreeRADIUS base and RouterOS deployment | Future image-hardening stage |
 | `samba-ad` | Versioned releases, multi-architecture build, required configuration validation, `testparm` before startup, and reduced deployment capabilities | Ubuntu packages are unpinned; runtime remains root | Future package/runtime hardening |
 
 ## Prioritized follow-up
 
-1. Publish and adopt the Hermes tools image without exposing private
-   deployment identifiers.
-2. Add immutable Action pinning, explicit SBOM/provenance attestations, and
+1. Add immutable Action pinning, explicit SBOM/provenance attestations, and
    verification.
-3. Document and enforce base/package, release-validation, and retention
+2. Document and enforce base/package, release-validation, and retention
    policies across the remaining images.
