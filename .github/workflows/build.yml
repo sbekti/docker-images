@@ -23,7 +23,6 @@ on:
         options:
           - actual-cli
           - asterisk
-          - aws-cli-tgz
           - freeradius
           - hermes-tools
           - radius-proxy
