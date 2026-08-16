@@ -1,6 +1,6 @@
 # Container image best-practices audit
 
-This is the repository checklist and findings inventory as of 2026-08-08.
+This is the repository checklist and findings inventory as of 2026-08-15.
 It records work; it does not silently change image behavior. Image-specific
 fixes should be reviewed and released independently.
 
@@ -14,8 +14,8 @@ fixes should be reviewed and released independently.
 - [x] Grouped patch updates run on Fridays and may automerge only after
   available CI checks pass; grouped minor updates run on Saturdays for review;
   major updates receive separate reviewable PRs on Sundays.
-- [x] Pull requests build every changed image for `linux/amd64` and
-  `linux/arm64` without publishing.
+- [x] Pull requests build every changed image on native `linux/amd64` and
+  `linux/arm64` GitHub-hosted runners without publishing.
 - [x] Shared build-workflow changes build all images.
 - [x] Only main, release tags, and manual runs can publish or sign images.
 - [x] The live Renovate dashboard detects both the `dockerfile` and
@@ -23,13 +23,13 @@ fixes should be reviewed and released independently.
 
 ### Supply chain and releases
 
-- [x] Published images are signed keylessly with cosign.
+- [x] Published images include keylessly signed SLSA provenance attestations.
 - [x] Version tags are image-scoped, for example `samba-ad/v0.1.11`.
 - [x] Deployments use versioned image tags rather than `:main` or `:latest`.
 - [ ] Pin GitHub Actions to immutable commit SHAs and let Renovate maintain the
   human-readable version comments.
-- [ ] Explicitly generate and attest an SBOM and provenance, then verify both
-  and the cosign signature in at least one consumer or release check.
+- [ ] Explicitly generate and attest an SBOM, then verify both the SBOM and
+  provenance in at least one consumer or release check.
 - [ ] Validate release tag syntax and require the image directory to contain
   the version being released where applicable.
 - [ ] Define GHCR retention for mutable `:main`, build cache, and superseded
@@ -80,7 +80,6 @@ image.
 
 ## Prioritized follow-up
 
-1. Add immutable Action pinning, explicit SBOM/provenance attestations, and
-   verification.
+1. Add immutable Action pinning, explicit SBOM attestations, and verification.
 2. Document and enforce base/package, release-validation, and retention
    policies across the remaining images.
