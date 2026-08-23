@@ -53,7 +53,7 @@ fixes should be reviewed and released independently.
 
 ## Current consumers
 
-The `homeinfra` repository currently deploys:
+Known deployments currently use:
 
 | Image | Consumer |
 |---|---|
@@ -61,7 +61,7 @@ The `homeinfra` repository currently deploys:
 | `asterisk:v20.11.1` | Asterisk chart |
 | `freeradius:v3.2.8` | FreeRADIUS chart |
 | `hermes-tools:v0.1.0` | Hermes tools sidecar |
-| `radius-proxy:v1.1.0` | JFK1 RouterOS RADIUS proxy container |
+| `radius-proxy:v1.1.0` | RADIUS proxy container |
 | `samba-ad:v0.3.2` | Samba AD chart |
 
 Vaultwarden's CronJob uses the external `ttionya/vaultwarden-backup:1.27.0`

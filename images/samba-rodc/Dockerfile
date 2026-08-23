@@ -20,6 +20,7 @@ RUN printf '%s\n' \
       echo "Samba ${installed_version} is older than required ${SAMBA_MIN_VERSION}." >&2; \
       exit 1; \
     fi \
+ && rm -f /etc/samba/smb.conf \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
