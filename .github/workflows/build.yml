@@ -27,6 +27,7 @@ on:
           - hermes-tools
           - radius-proxy
           - samba-ad
+          - samba-rodc
 
 permissions:
   contents: read

@@ -12,6 +12,7 @@ Docker image builds, published to `ghcr.io/sbekti/<image>`.
 | [hermes-tools](images/hermes-tools/) | Hermes MCP tools and generic seed skills |
 | [radius-proxy](images/radius-proxy/) | Ordered RADIUS authentication and accounting proxy |
 | [samba-ad](images/samba-ad/) | Samba Active Directory DC |
+| [samba-rodc](images/samba-rodc/) | Minimal read-only AD DC for site-local Wi-Fi authentication |
 
 ## Usage
 
