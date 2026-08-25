@@ -1,0 +1,35 @@
+ldap {
+    server = "$ENV{RADIUS_LDAP_SERVER}"
+    port = $ENV{RADIUS_LDAP_PORT}
+    identity = "$ENV{RADIUS_LDAP_IDENTITY}"
+    password = "$ENV{RADIUS_LDAP_PASSWORD}"
+    base_dn = "$ENV{RADIUS_LDAP_BASE_DN}"
+    start_tls = no
+
+    user {
+        base_dn = "${..base_dn}"
+        filter = "(&(objectClass=user)(sAMAccountName=%{%{Stripped-User-Name}:-%{mschap:User-Name}}))"
+    }
+
+    group {
+        base_dn = "${..base_dn}"
+        filter = "(&(objectClass=group)(member=%{control:Ldap-UserDn}))"
+        membership_attribute = memberOf
+        name_attribute = cn
+    }
+
+    options {
+        chase_referrals = no
+        rebind = no
+        net_timeout = 1
+        res_timeout = 1
+        srv_timelimit = 1
+    }
+
+    pool {
+        start = 0
+        min = 0
+        spare = 0
+        retry_delay = 1
+    }
+}

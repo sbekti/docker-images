@@ -1,0 +1,53 @@
+server default {
+    listen {
+        type = auth
+        ipaddr = $ENV{RADIUS_LISTEN_ADDRESS}
+        port = $ENV{RADIUS_LISTEN_PORT}
+    }
+
+    authorize {
+        if (&EAP-Message) {
+            eap
+        }
+        else {
+            update reply {
+                Tunnel-Type := VLAN
+                Tunnel-Medium-Type := IEEE-802
+                Tunnel-Private-Group-Id := "$ENV{RADIUS_DEFAULT_VLAN}"
+            }
+            mab_users
+            if (noop) {
+                update control {
+                    Auth-Type := Accept
+                }
+            }
+            else {
+                pap
+            }
+        }
+    }
+
+    authenticate {
+        Auth-Type Accept {
+            accept
+        }
+        Auth-Type PAP {
+            pap {
+                reject = 1
+            }
+            if (reject) {
+                update reply {
+                    Tunnel-Private-Group-Id := "$ENV{RADIUS_DEFAULT_VLAN}"
+                }
+                accept
+            }
+        }
+        eap
+    }
+
+    post-auth {
+        Post-Auth-Type REJECT {
+            eap
+        }
+    }
+}

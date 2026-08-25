@@ -48,7 +48,7 @@ set_runtime_configuration() {
         "${SMB_CONF}"
     sed -i "/^\[global\][[:space:]]*$/a\\
 \tdns update command = /usr/bin/false\n\
-\tldap server require strong auth = yes\n\
+\tldap server require strong auth = no\n\
 \tntlm auth = mschapv2-and-ntlmv2-only\n\
 \trpc server dynamic port range = ${RPC_PORT_RANGE}\n\
 \tserver services = ${RODC_SERVICES}" "${SMB_CONF}"
@@ -93,7 +93,7 @@ join_rodc() {
         --option="interfaces = lo ${RODC_ADDRESS}" \
         --option="bind interfaces only = yes" \
         --option="dns update command = /usr/bin/false" \
-        --option="ldap server require strong auth = yes" \
+        --option="ldap server require strong auth = no" \
         --option="ntlm auth = mschapv2-and-ntlmv2-only" \
         --option="rpc server dynamic port range = ${RPC_PORT_RANGE}" \
         --option="server services = ${RODC_SERVICES}"
