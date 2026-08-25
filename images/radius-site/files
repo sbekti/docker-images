@@ -1,0 +1,8 @@
+files mab_users {
+    filename = $ENV{RADIUS_MAB_USERS_FILE}
+    key = "%{tolower:%{User-Name}}"
+}
+
+files eap_vlan {
+    filename = /run/radius-site-eap-vlan
+}

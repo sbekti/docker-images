@@ -11,6 +11,7 @@ Docker image builds, published to `ghcr.io/sbekti/<image>`.
 | [freeradius](images/freeradius/) | Ubuntu 26.04-based FreeRADIUS 3.2.8 server |
 | [hermes-tools](images/hermes-tools/) | Hermes MCP tools and generic seed skills |
 | [radius-proxy](images/radius-proxy/) | Ordered RADIUS authentication and accounting proxy |
+| [radius-site](images/radius-site/) | Site-local EAP and cached MAC authentication |
 | [samba-ad](images/samba-ad/) | Samba Active Directory DC |
 | [samba-rodc](images/samba-rodc/) | Minimal read-only AD DC for site-local Wi-Fi authentication |
 

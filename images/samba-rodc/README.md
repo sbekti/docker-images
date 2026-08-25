@@ -19,6 +19,11 @@ policy, or password-preload loop.
 - The runtime service set is fixed to `rpc, ldap, cldap, drepl, winbindd`.
 - Dynamic RPC is fixed to TCP ports 50000–50019.
 - DNS registration and DNS serving are disabled.
+- Simple LDAP is permitted for authorization on an isolated container bridge;
+  do not expose the LDAP listener to untrusted networks.
+- The privileged Winbind socket group uses GID `998` by default. Override
+  `WINBIND_PRIVILEGED_GID` in both images only when the deployment requires a
+  different shared GID.
 - No supported command provisions a writable domain.
 
 The safety boundary is the supported entrypoint. Like any privileged,

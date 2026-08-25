@@ -1,0 +1,27 @@
+server inner-tunnel {
+    authorize {
+        filter_username
+        mschap
+        eap {
+            ok = return
+        }
+
+        ldap
+        if (notfound || reject || fail) {
+            reject
+        }
+
+        eap_vlan
+        if (!&reply:Tunnel-Private-Group-Id) {
+            reject
+        }
+    }
+
+    authenticate {
+        Auth-Type MS-CHAP {
+            mschap
+        }
+        mschap
+        eap
+    }
+}

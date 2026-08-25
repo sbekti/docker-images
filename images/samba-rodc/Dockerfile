@@ -2,6 +2,7 @@ FROM debian:13-slim
 
 ARG SAMBA_MIN_VERSION="2:4.23.9"
 ARG DEBIAN_FRONTEND="noninteractive"
+ARG WINBIND_PRIVILEGED_GID="998"
 
 RUN printf '%s\n' \
       'deb http://deb.debian.org/debian trixie-backports main' \
@@ -20,6 +21,7 @@ RUN printf '%s\n' \
       echo "Samba ${installed_version} is older than required ${SAMBA_MIN_VERSION}." >&2; \
       exit 1; \
     fi \
+ && groupmod --gid "${WINBIND_PRIVILEGED_GID}" winbindd_priv \
  && rm -f /etc/samba/smb.conf \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
