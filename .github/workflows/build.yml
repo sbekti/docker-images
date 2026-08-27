@@ -25,6 +25,7 @@ on:
           - asterisk
           - freeradius
           - hermes-tools
+          - ntlm-auth-bridge
           - radius-proxy
           - radius-site
           - samba-ad
