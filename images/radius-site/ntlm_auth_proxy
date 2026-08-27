@@ -1,7 +1,10 @@
 #!/bin/sh
 set -eu
 
-response="$(curl -fsS -X POST "${RADIUS_NTLM_AUTH_PROXY_URL}/auth" \
+url="$1"
+shift
+
+response="$(curl -fsS -X POST "${url}/auth" \
     -H 'Content-Type: application/json' \
     -d "{\"username\":\"$1\",\"domain\":\"$2\",\"challenge\":\"$3\",\"nt_response\":\"$4\",\"request_nt_key\":true}")"
 
