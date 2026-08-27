@@ -51,6 +51,7 @@ start_radius() {
         --env RADIUS_LDAP_BASE_DN=dc=example,dc=test \
         --env RADIUS_LDAP_IDENTITY=radius-reader@example.test \
         --env RADIUS_LDAP_SERVER=127.0.0.1 \
+        --env RADIUS_NTLM_AUTH_PROXY_URL=http://127.0.0.1:9555 \
         --env RADIUS_WINBIND_DOMAIN=EXAMPLE \
         --mount "type=bind,src=${FIXTURE}/mab,dst=/run/radius-site,readonly" \
         --mount "type=bind,src=${FIXTURE}/radius-client,dst=/run/secrets/radius-client,readonly" \

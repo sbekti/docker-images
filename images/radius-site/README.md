@@ -25,6 +25,7 @@ state of its own.
 | `RADIUS_LDAP_PORT` | RODC LDAP port; default `389` |
 | `RADIUS_LDAP_IDENTITY` | Read-only LDAP service-account identity |
 | `RADIUS_LDAP_BASE_DN` | LDAP search base |
+| `RADIUS_NTLM_AUTH_PROXY_URL` | Local NTLM authentication proxy base URL |
 | `RADIUS_WINBIND_DOMAIN` | Short domain used when an identity omits one |
 | `RADIUS_LISTEN_ADDRESS` | Authentication listener; default `*` |
 | `RADIUS_LISTEN_PORT` | Authentication port; default `1812` |
@@ -41,9 +42,6 @@ an upstream server.
 | Path | Purpose |
 |---|---|
 | `/run/radius-site/mab-users` | Current snapshot in FreeRADIUS users-file format |
-| `/run/samba` | RODC public Winbind socket directory |
-| `/var/lib/samba/winbindd_privileged` | RODC privileged Winbind socket directory |
-| `/etc/samba` | RODC Samba configuration |
 | `/run/secrets/radius-client/secret` | NAS shared secret |
 | `/run/secrets/radius-eap/server.key` | EAP server private key |
 | `/run/secrets/radius-eap/server.pem` | EAP server certificate and chain |
@@ -59,8 +57,6 @@ container after replacing it.
 The password and EAP private-key files must be readable at startup. The server
 certificate file must contain any intermediate chain required by clients.
 The EAP key and certificate are imported into private runtime files at startup.
-Build this image and the RODC image with the same `WINBIND_PRIVILEGED_GID`;
-the default is `998`.
 
 LDAP uses a simple bind only on the private container network. Do not publish
 the RODC LDAP listener or attach untrusted containers to that network.

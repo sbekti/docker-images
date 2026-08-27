@@ -22,8 +22,8 @@ ldap {
         chase_referrals = no
         rebind = no
         net_timeout = 1
-        res_timeout = 1
-        srv_timelimit = 1
+        res_timeout = 3
+        srv_timelimit = 3
     }
 
     pool {

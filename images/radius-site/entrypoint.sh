@@ -48,6 +48,7 @@ render_eap_vlan_map() (
 : "${RADIUS_LDAP_BASE_DN:?RADIUS_LDAP_BASE_DN is required.}"
 : "${RADIUS_LDAP_IDENTITY:?RADIUS_LDAP_IDENTITY is required.}"
 : "${RADIUS_LDAP_SERVER:?RADIUS_LDAP_SERVER is required.}"
+: "${RADIUS_NTLM_AUTH_PROXY_URL:?RADIUS_NTLM_AUTH_PROXY_URL is required.}"
 : "${RADIUS_WINBIND_DOMAIN:?RADIUS_WINBIND_DOMAIN is required.}"
 
 valid_vlan "${RADIUS_DEFAULT_VLAN}" || fail "RADIUS_DEFAULT_VLAN must be 1-4094."

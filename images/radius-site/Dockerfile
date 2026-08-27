@@ -1,8 +1,5 @@
 FROM ghcr.io/sbekti/freeradius:v3.2.8
 
-ARG DEBIAN_FRONTEND="noninteractive"
-ARG WINBIND_PRIVILEGED_GID="998"
-
 ENV RADIUS_LISTEN_ADDRESS="*" \
     RADIUS_LISTEN_PORT="1812" \
     RADIUS_CLIENT_REQUIRE_MESSAGE_AUTHENTICATOR="yes" \
@@ -13,15 +10,10 @@ COPY clients.conf /etc/freeradius/3.0/clients.conf
 COPY default inner-tunnel /etc/freeradius/3.0/sites-available/
 COPY eap files mschap /etc/freeradius/3.0/mods-available/
 COPY ldap /etc/freeradius/3.0/mods-enabled/ldap
+COPY --chmod=755 ntlm_auth_proxy /usr/local/bin/ntlm_auth_proxy
 COPY --chmod=755 entrypoint.sh /radius-site-entrypoint.sh
 
-RUN apt-get update \
- && apt-get install -y --no-install-recommends winbind \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/* \
- && groupmod --gid "${WINBIND_PRIVILEGED_GID}" winbindd_priv \
- && usermod --append --groups winbindd_priv freerad \
- && mkdir -p \
+RUN mkdir -p \
       /etc/freeradius/3.0/mods-config/files/mab_users \
       /run/radius-site \
       /run/secrets/radius-client \
@@ -41,6 +33,7 @@ RUN apt-get update \
       RADIUS_LDAP_BASE_DN=dc=example,dc=test \
       RADIUS_LDAP_IDENTITY=radius-reader@example.test \
       RADIUS_LDAP_SERVER=192.0.2.10 \
+      RADIUS_NTLM_AUTH_PROXY_URL=http://192.0.2.11:9555 \
       RADIUS_WINBIND_DOMAIN=EXAMPLE \
       /radius-site-entrypoint.sh freeradius -XC \
  && rm -rf \
