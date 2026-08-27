@@ -39,7 +39,7 @@ write_snapshot() {
         '    Tunnel-Medium-Type := IEEE-802,' \
         "    Tunnel-Private-Group-Id := \"${vlan}\"" \
         > "${FIXTURE}/mab/mab-users"
-    chmod 0644 "${FIXTURE}/mab/mab-users"
+    chmod 0666 "${FIXTURE}/mab/mab-users"
 }
 
 start_radius() {

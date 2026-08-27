@@ -1,5 +1,5 @@
 files mab_users {
-    filename = $ENV{RADIUS_MAB_USERS_FILE}
+    filename = ${modconfdir}/files/mab_users/authorize
     key = "%{tolower:%{User-Name}}"
 }
 

@@ -53,7 +53,8 @@ The snapshot must start with `# radius-site-mab-v1`. A marker-only file is a
 valid empty snapshot. A missing, empty, or incorrectly marked snapshot stops
 the container, so a first deployment cannot silently treat every device as
 unknown. Runtime fetch failures should leave the last-known-good file in
-place.
+place. The snapshot is imported when the container starts; restart the
+container after replacing it.
 
 The password and EAP private-key files must be readable at startup. The server
 certificate file must contain any intermediate chain required by clients.

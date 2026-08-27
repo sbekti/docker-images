@@ -60,6 +60,8 @@ require_file "${RADIUS_MAB_USERS_FILE}"
 IFS= read -r marker < "${RADIUS_MAB_USERS_FILE}" || true
 [ "${marker:-}" = "# radius-site-mab-v1" ] \
     || fail "Invalid MAB snapshot marker in ${RADIUS_MAB_USERS_FILE}."
+install -m 0644 "${RADIUS_MAB_USERS_FILE}" \
+    /etc/freeradius/3.0/mods-config/files/mab_users/authorize
 
 RADIUS_CLIENT_SECRET="$(cat /run/secrets/radius-client/secret)"
 RADIUS_LDAP_PASSWORD="$(cat /run/secrets/radius-ldap/password)"
