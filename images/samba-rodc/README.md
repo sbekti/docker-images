@@ -43,6 +43,9 @@ who can change the container.
 identity environment variables. Health deliberately remains good during a
 central outage when local Samba and Winbind are usable.
 
+At startup, `run` normalizes the ownership and permissions of Samba's mounted
+socket directories and removes stale runtime files before starting Samba.
+
 `join` requires:
 
 | Variable | Meaning |

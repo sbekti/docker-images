@@ -5,6 +5,8 @@ readonly RODC_SERVICES="rpc, ldap, cldap, drepl, winbindd"
 readonly SMB_CONF="/etc/samba/smb.conf"
 readonly SAM_DB="/var/lib/samba/private/sam.ldb"
 readonly RPC_PORT_RANGE="50000-50019"
+readonly SAMBA_RUNTIME_DIR="/run/samba"
+readonly WINBIND_PRIVILEGED_DIR="/var/lib/samba/winbindd_privileged"
 
 usage() {
     cat <<'EOF'
@@ -64,6 +66,13 @@ validate_rodc_state() {
     /usr/local/sbin/rodc-state-check
 }
 
+prepare_runtime() {
+    install -d -m 0755 -o root -g root "${SAMBA_RUNTIME_DIR}"
+    install -d -m 0750 -o root -g winbindd_priv "${WINBIND_PRIVILEGED_DIR}"
+    find "${SAMBA_RUNTIME_DIR}" "${WINBIND_PRIVILEGED_DIR}" \
+        -mindepth 1 -delete
+}
+
 join_rodc() {
     local dns_hostname
 
@@ -110,6 +119,7 @@ case "${command_name}" in
     run)
         require_no_arguments run "$@"
         validate_rodc_state
+        prepare_runtime
         exec samba \
             --foreground \
             --no-process-group \
