@@ -22,6 +22,7 @@ RUN apt-get update \
  && groupmod --gid "${WINBIND_PRIVILEGED_GID}" winbindd_priv \
  && usermod --append --groups winbindd_priv freerad \
  && mkdir -p \
+      /etc/freeradius/3.0/mods-config/files/mab_users \
       /run/radius-site \
       /run/secrets/radius-client \
       /run/secrets/radius-eap \
@@ -43,6 +44,7 @@ RUN apt-get update \
       RADIUS_WINBIND_DOMAIN=EXAMPLE \
       /radius-site-entrypoint.sh freeradius -XC \
  && rm -rf \
+      /etc/freeradius/3.0/mods-config/files/mab_users/authorize \
       /run/radius-site \
       /run/radius-site-eap-vlan \
       /run/secrets/radius-client \
