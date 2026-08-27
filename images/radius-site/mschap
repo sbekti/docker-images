@@ -3,6 +3,6 @@ mschap {
     require_encryption = yes
     require_strong = yes
     with_ntdomain_hack = yes
-    ntlm_auth = "/usr/bin/ntlm_auth --request-nt-key --allow-mschapv2 --username=%{mschap:User-Name} --domain=%{%{mschap:NT-Domain}:-$ENV{RADIUS_WINBIND_DOMAIN}} --challenge=%{mschap:Challenge} --nt-response=%{mschap:NT-Response}"
+    ntlm_auth = "/usr/local/bin/ntlm_auth_proxy %{mschap:User-Name} %{%{mschap:NT-Domain}:-$ENV{RADIUS_WINBIND_DOMAIN}} %{mschap:Challenge} %{mschap:NT-Response}"
     ntlm_auth_timeout = 3
 }
