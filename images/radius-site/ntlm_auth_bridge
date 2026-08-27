@@ -1,0 +1,20 @@
+#!/bin/sh
+set -eu
+
+url="$1"
+shift
+
+request="$(jq -cn \
+    --arg username "$1" \
+    --arg domain "$2" \
+    --arg challenge "$3" \
+    --arg nt_response "$4" \
+    '{username: $username, domain: $domain, challenge: $challenge, nt_response: $nt_response, request_nt_key: true}')"
+
+response="$(curl -fsS --max-time 3 \
+    -H 'Content-Type: application/json' \
+    --data-binary "${request}" \
+    "${url}/auth")"
+
+printf '%s\n' "${response}" \
+    | jq -re 'select(.authenticated == true) | "NT_KEY: " + .nt_key'

@@ -10,7 +10,7 @@ COPY clients.conf /etc/freeradius/3.0/clients.conf
 COPY default inner-tunnel /etc/freeradius/3.0/sites-available/
 COPY eap files mschap /etc/freeradius/3.0/mods-available/
 COPY ldap /etc/freeradius/3.0/mods-enabled/ldap
-COPY --chmod=755 ntlm_auth_proxy /usr/local/bin/ntlm_auth_proxy
+COPY --chmod=755 ntlm_auth_bridge /usr/local/bin/ntlm_auth_bridge
 COPY --chmod=755 entrypoint.sh /radius-site-entrypoint.sh
 
 RUN mkdir -p \
@@ -33,7 +33,7 @@ RUN mkdir -p \
       RADIUS_LDAP_BASE_DN=dc=example,dc=test \
       RADIUS_LDAP_IDENTITY=radius-reader@example.test \
       RADIUS_LDAP_SERVER=192.0.2.10 \
-      RADIUS_NTLM_AUTH_PROXY_URL=http://192.0.2.11:9555 \
+      RADIUS_NTLM_AUTH_BRIDGE_URL=http://192.0.2.11:9555 \
       RADIUS_WINBIND_DOMAIN=EXAMPLE \
       /radius-site-entrypoint.sh freeradius -XC \
  && rm -rf \

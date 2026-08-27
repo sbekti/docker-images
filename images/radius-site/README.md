@@ -25,7 +25,7 @@ state of its own.
 | `RADIUS_LDAP_PORT` | RODC LDAP port; default `389` |
 | `RADIUS_LDAP_IDENTITY` | Read-only LDAP service-account identity |
 | `RADIUS_LDAP_BASE_DN` | LDAP search base |
-| `RADIUS_NTLM_AUTH_PROXY_URL` | Local NTLM authentication proxy base URL |
+| `RADIUS_NTLM_AUTH_BRIDGE_URL` | Local NTLM authentication bridge base URL |
 | `RADIUS_WINBIND_DOMAIN` | Short domain used when an identity omits one |
 | `RADIUS_LISTEN_ADDRESS` | Authentication listener; default `*` |
 | `RADIUS_LISTEN_PORT` | Authentication port; default `1812` |
