@@ -2,8 +2,8 @@ eap {
     default_eap_type = peap
 
     tls-config tls-common {
-        private_key_file = /run/secrets/radius-eap/server.key
-        certificate_file = /run/secrets/radius-eap/server.pem
+        private_key_file = /run/radius-site-eap/server.key
+        certificate_file = /run/radius-site-eap/server.pem
         fragment_size = 1024
         include_length = yes
         tls_min_version = "1.2"

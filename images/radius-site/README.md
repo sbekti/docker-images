@@ -58,6 +58,7 @@ container after replacing it.
 
 The password and EAP private-key files must be readable at startup. The server
 certificate file must contain any intermediate chain required by clients.
+The EAP key and certificate are imported into private runtime files at startup.
 Build this image and the RODC image with the same `WINBIND_PRIVILEGED_GID`;
 the default is `998`.
 

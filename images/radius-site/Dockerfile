@@ -54,3 +54,4 @@ RUN apt-get update \
 EXPOSE 1812/udp
 
 ENTRYPOINT ["/radius-site-entrypoint.sh"]
+CMD ["freeradius"]
