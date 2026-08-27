@@ -60,6 +60,11 @@ require_file "${RADIUS_MAB_USERS_FILE}"
 IFS= read -r marker < "${RADIUS_MAB_USERS_FILE}" || true
 [ "${marker:-}" = "# radius-site-mab-v1" ] \
     || fail "Invalid MAB snapshot marker in ${RADIUS_MAB_USERS_FILE}."
+install -d -m 0750 -o freerad -g freerad /run/radius-site-eap
+install -m 0640 -o freerad -g freerad /run/secrets/radius-eap/server.key \
+    /run/radius-site-eap/server.key
+install -m 0644 -o freerad -g freerad /run/secrets/radius-eap/server.pem \
+    /run/radius-site-eap/server.pem
 install -m 0644 "${RADIUS_MAB_USERS_FILE}" \
     /etc/freeradius/3.0/mods-config/files/mab_users/authorize
 
