@@ -4,5 +4,5 @@ files mab_users {
 }
 
 files eap_vlan {
-    filename = /run/radius-site-eap-vlan
+    filename = /run/radius-local-eap-vlan
 }

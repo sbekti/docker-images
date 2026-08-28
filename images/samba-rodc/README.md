@@ -1,6 +1,6 @@
 # Samba RODC
 
-A minimal Samba read-only domain controller for site-local authentication. Its
+A minimal Samba read-only domain controller for local authentication. Its
 supported entrypoint has no writable-domain provisioning path.
 
 Samba performs ordinary directory replication itself. Active Directory's

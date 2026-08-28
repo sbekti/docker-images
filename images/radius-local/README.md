@@ -1,6 +1,6 @@
-# Site-local RADIUS
+# Local RADIUS
 
-A small FreeRADIUS service for site-local Wi-Fi authentication.
+A small FreeRADIUS service for local Wi-Fi authentication.
 
 - PEAP/MSCHAPv2 authenticates only against a local Samba RODC and fails closed.
 - The first matching directory group in `RADIUS_EAP_VLAN_MAP` selects the VLAN.
@@ -9,9 +9,9 @@ A small FreeRADIUS service for site-local Wi-Fi authentication.
 - Unknown MACs and known MACs with a wrong credential receive the default VLAN.
 - Accounting is not accepted or stored.
 
-The image extends `ghcr.io/sbekti/freeradius:v3.2.8`. It has no database,
-upstream RADIUS server, background synchronization process, or persistent
-state of its own.
+The image builds FreeRADIUS 3.2.10 from the pinned upstream source. It has no
+database, upstream RADIUS server, background synchronization process, or
+persistent state of its own.
 
 ## Environment
 
@@ -29,7 +29,7 @@ state of its own.
 | `RADIUS_WINBIND_DOMAIN` | Short domain used when an identity omits one |
 | `RADIUS_LISTEN_ADDRESS` | Authentication listener; default `*` |
 | `RADIUS_LISTEN_PORT` | Authentication port; default `1812` |
-| `RADIUS_MAB_USERS_FILE` | Cached users file; default `/run/radius-site/mab-users` |
+| `RADIUS_MAB_USERS_FILE` | Cached users file; default `/run/radius-local/mab-users` |
 
 Map order is authorization priority. Group names may not contain commas or
 equals signs. VLANs must be in the range 1–4094.
@@ -41,13 +41,13 @@ an upstream server.
 
 | Path | Purpose |
 |---|---|
-| `/run/radius-site/mab-users` | Current snapshot in FreeRADIUS users-file format |
+| `/run/radius-local/mab-users` | Current snapshot in FreeRADIUS users-file format |
 | `/run/secrets/radius-client/secret` | NAS shared secret |
 | `/run/secrets/radius-eap/server.key` | EAP server private key |
 | `/run/secrets/radius-eap/server.pem` | EAP server certificate and chain |
 | `/run/secrets/radius-ldap/password` | LDAP service-account password |
 
-The snapshot must start with `# radius-site-mab-v1`. A marker-only file is a
+The snapshot must start with `# radius-mab-v1`. A marker-only file is a
 valid empty snapshot. A missing, empty, or incorrectly marked snapshot stops
 the container, so a first deployment cannot silently treat every device as
 unknown. Runtime fetch failures should leave the last-known-good file in
@@ -62,7 +62,7 @@ LDAP uses a simple bind only on the private container network. Do not publish
 the RODC LDAP listener or attach untrusted containers to that network.
 
 ```bash
-docker build -t radius-site:test images/radius-site
+docker build -t radius-local:test images/radius-local
 ```
 
 ## MAB integration test
@@ -70,7 +70,7 @@ docker build -t radius-site:test images/radius-site
 From the repository root, run:
 
 ```bash
-tests/radius-site-mab.sh
+tests/radius-local-mab.sh
 ```
 
 The test builds the image, starts it with temporary generic fixtures, sends
