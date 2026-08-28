@@ -1,15 +1,12 @@
-FROM golang:1.26 AS builder
+FROM golang:1.26.0-alpine3.23 AS builder
 
 WORKDIR /src
 COPY go.mod main.go ./
 RUN CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /ntlm-auth-bridge .
 
-FROM ubuntu:26.04
+FROM alpine:3.24
 
-ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get update \
- && apt-get install -y --no-install-recommends winbind \
- && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache samba-winbind-clients
 
 COPY --from=builder /ntlm-auth-bridge /usr/local/bin/ntlm-auth-bridge
 

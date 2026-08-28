@@ -2,8 +2,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-IMAGE="${RADIUS_SITE_TEST_IMAGE:-radius-site:mab-test}"
-CONTAINER="radius-site-mab-test-${RANDOM}"
+IMAGE="${RADIUS_LOCAL_TEST_IMAGE:-radius-local:mab-test}"
+CONTAINER="radius-local-mab-test-${RANDOM}"
 FIXTURE="$(mktemp -d)"
 SECRET="test-radius-secret"
 MAC="020000000001"
@@ -33,7 +33,7 @@ chmod 0666 "${FIXTURE}/radius-eap/server.key" "${FIXTURE}/radius-eap/server.pem"
 write_snapshot() {
     local vlan="$1"
     printf '%s\n' \
-        '# radius-site-mab-v1' \
+        '# radius-mab-v1' \
         "${MAC} Cleartext-Password := \"${MAC}\"" \
         '    Tunnel-Type := VLAN,' \
         '    Tunnel-Medium-Type := IEEE-802,' \
@@ -53,24 +53,23 @@ start_radius() {
         --env RADIUS_LDAP_SERVER=127.0.0.1 \
         --env RADIUS_NTLM_AUTH_BRIDGE_URL=http://127.0.0.1:9555 \
         --env RADIUS_WINBIND_DOMAIN=EXAMPLE \
-        --mount "type=bind,src=${FIXTURE}/mab,dst=/run/radius-site,readonly" \
+        --mount "type=bind,src=${FIXTURE}/mab,dst=/run/radius-local,readonly" \
         --mount "type=bind,src=${FIXTURE}/radius-client,dst=/run/secrets/radius-client,readonly" \
         --mount "type=bind,src=${FIXTURE}/radius-eap,dst=/run/secrets/radius-eap,readonly" \
         --mount "type=bind,src=${FIXTURE}/radius-ldap,dst=/run/secrets/radius-ldap,readonly" \
         "${IMAGE}" >/dev/null
 
     for _ in {1..40}; do
-        if docker exec "${CONTAINER}" grep -q 'Ready to process requests' /var/log/freeradius/radius.log 2>/dev/null; then
+        if docker logs "${CONTAINER}" 2>&1 | grep -q 'Ready to process requests'; then
             return
         fi
         if ! docker inspect --format '{{.State.Running}}' "${CONTAINER}" | grep -q true; then
-            docker cp "${CONTAINER}:/var/log/freeradius/radius.log" "${FIXTURE}/radius.log" >/dev/null 2>&1 || true
-            sed -n '1,200p' "${FIXTURE}/radius.log" >&2 2>/dev/null || true
+            docker logs "${CONTAINER}" >&2 || true
             return 1
         fi
         sleep 0.25
     done
-    docker exec "${CONTAINER}" sed -n '1,200p' /var/log/freeradius/radius.log >&2 || true
+    docker logs "${CONTAINER}" >&2 || true
     return 1
 }
 
@@ -91,7 +90,7 @@ assert_mab() {
     fi
 }
 
-docker build --tag "${IMAGE}" "${ROOT}/images/radius-site" >/dev/null
+docker build --tag "${IMAGE}" "${ROOT}/images/radius-local" >/dev/null
 
 write_snapshot 20
 start_radius
@@ -103,4 +102,4 @@ write_snapshot 1
 start_radius
 assert_mab "${MAC}" "${MAC}" 1
 
-echo 'radius-site MAB integration test passed'
+echo 'radius-local MAB integration test passed'

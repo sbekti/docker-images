@@ -19,7 +19,7 @@ valid_vlan() {
 
 render_eap_vlan_map() (
     IFS=,
-    : > /run/radius-site-eap-vlan
+    : > /run/radius-local-eap-vlan
 
     for mapping in ${RADIUS_EAP_VLAN_MAP}; do
         group="${mapping%%=*}"
@@ -36,10 +36,10 @@ render_eap_vlan_map() (
             "    Tunnel-Type := VLAN," \
             "    Tunnel-Medium-Type := IEEE-802," \
             "    Tunnel-Private-Group-Id := \"${vlan}\"" \
-            >> /run/radius-site-eap-vlan
+            >> /run/radius-local-eap-vlan
     done
 
-    chmod 0644 /run/radius-site-eap-vlan
+    chmod 0644 /run/radius-local-eap-vlan
 )
 
 : "${RADIUS_CLIENT_ADDRESS:?RADIUS_CLIENT_ADDRESS is required.}"
@@ -59,15 +59,15 @@ require_file /run/secrets/radius-eap/server.pem
 require_file /run/secrets/radius-ldap/password
 require_file "${RADIUS_MAB_USERS_FILE}"
 IFS= read -r marker < "${RADIUS_MAB_USERS_FILE}" || true
-[ "${marker:-}" = "# radius-site-mab-v1" ] \
+[ "${marker:-}" = "# radius-mab-v1" ] \
     || fail "Invalid MAB snapshot marker in ${RADIUS_MAB_USERS_FILE}."
-install -d -m 0750 -o freerad -g freerad /run/radius-site-eap
-install -m 0640 -o freerad -g freerad /run/secrets/radius-eap/server.key \
-    /run/radius-site-eap/server.key
-install -m 0644 -o freerad -g freerad /run/secrets/radius-eap/server.pem \
-    /run/radius-site-eap/server.pem
+install -d -m 0750 -o radius -g radius /run/radius-local-eap
+install -m 0640 -o radius -g radius /run/secrets/radius-eap/server.key \
+    /run/radius-local-eap/server.key
+install -m 0644 -o radius -g radius /run/secrets/radius-eap/server.pem \
+    /run/radius-local-eap/server.pem
 install -m 0644 "${RADIUS_MAB_USERS_FILE}" \
-    /etc/freeradius/3.0/mods-config/files/mab_users/authorize
+    /opt/etc/raddb/mods-config/files/mab_users/authorize
 
 RADIUS_CLIENT_SECRET="$(cat /run/secrets/radius-client/secret)"
 RADIUS_LDAP_PASSWORD="$(cat /run/secrets/radius-ldap/password)"
@@ -75,4 +75,9 @@ export RADIUS_CLIENT_SECRET RADIUS_LDAP_PASSWORD
 
 render_eap_vlan_map
 
-exec /entrypoint.sh "$@"
+if [ "${1:-}" = radiusd ] || [ "${1:-}" = freeradius ]; then
+    shift
+    set -- radiusd -f "$@"
+fi
+
+exec "$@"

@@ -27,7 +27,7 @@ on:
           - hermes-tools
           - ntlm-auth-bridge
           - radius-proxy
-          - radius-site
+          - radius-local
           - samba-ad
           - samba-rodc
 
