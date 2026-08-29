@@ -23,10 +23,8 @@ on:
         options:
           - actual-cli
           - asterisk
-          - freeradius
           - hermes-tools
           - ntlm-auth-bridge
-          - radius-proxy
           - radius-local
           - samba-ad
           - samba-rodc
