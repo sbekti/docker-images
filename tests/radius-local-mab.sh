@@ -28,7 +28,9 @@ printf '%s\n' 'test-ldap-password' > "${FIXTURE}/radius-ldap/password"
 openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj '/CN=radius.example.test' \
     -keyout "${FIXTURE}/radius-eap/server.key" \
     -out "${FIXTURE}/radius-eap/server.pem" >/dev/null 2>&1
-chmod 0666 "${FIXTURE}/radius-eap/server.key" "${FIXTURE}/radius-eap/server.pem"
+cat "${FIXTURE}/radius-eap/server.key" >> "${FIXTURE}/radius-eap/server.pem"
+rm "${FIXTURE}/radius-eap/server.key"
+chmod 0666 "${FIXTURE}/radius-eap/server.pem"
 
 write_snapshot() {
     local vlan="$1"
