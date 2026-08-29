@@ -29,9 +29,11 @@ RUN : > src/modules/stable \
       --with-modules='rlm_always rlm_eap rlm_expr rlm_files rlm_ldap rlm_mschap rlm_pap' \
  && make -j"$(nproc)" \
  && make install \
+ && openssl x509 -in /opt/etc/raddb/certs/server.pem \
+      -out /opt/etc/raddb/certs/server-unencrypted.pem \
  && openssl pkey -in /opt/etc/raddb/certs/server.key \
       -passin pass:whatever \
-      -out /opt/etc/raddb/certs/server-unencrypted.key \
+      >> /opt/etc/raddb/certs/server-unencrypted.pem \
  && find /opt/bin -type f ! -name radclient -delete \
  && rm -rf /opt/include /opt/share/doc /opt/share/man \
       /opt/sbin/checkrad /opt/sbin/raddebug /opt/sbin/radmin \
@@ -108,8 +110,7 @@ RUN chgrp -R radius /opt/etc/raddb \
  && printf '%s\n' '# radius-mab-v1' > /run/radius-local/mab-users \
  && printf '%s\n' 'build-only-client' > /run/secrets/radius-client/secret \
  && printf '%s\n' 'build-only-password' > /run/secrets/radius-ldap/password \
- && cp /opt/etc/raddb/certs/server-unencrypted.key /run/secrets/radius-eap/server.key \
- && cp /opt/etc/raddb/certs/server.pem /run/secrets/radius-eap/server.pem \
+ && cp /opt/etc/raddb/certs/server-unencrypted.pem /run/secrets/radius-eap/server.pem \
  && env \
       RADIUS_CLIENT_ADDRESS=192.0.2.0/24 \
       RADIUS_DEFAULT_VLAN=10 \

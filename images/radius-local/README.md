@@ -43,8 +43,7 @@ an upstream server.
 |---|---|
 | `/run/radius-local/mab-users` | Current snapshot in FreeRADIUS users-file format |
 | `/run/secrets/radius-client/secret` | NAS shared secret |
-| `/run/secrets/radius-eap/server.key` | EAP server private key |
-| `/run/secrets/radius-eap/server.pem` | EAP server certificate and chain |
+| `/run/secrets/radius-eap/server.pem` | EAP server certificate, chain, and private key |
 | `/run/secrets/radius-ldap/password` | LDAP service-account password |
 
 The snapshot must start with `# radius-mab-v1`. A marker-only file is a

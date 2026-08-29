@@ -54,7 +54,6 @@ render_eap_vlan_map() (
 valid_vlan "${RADIUS_DEFAULT_VLAN}" || fail "RADIUS_DEFAULT_VLAN must be 1-4094."
 
 require_file /run/secrets/radius-client/secret
-require_file /run/secrets/radius-eap/server.key
 require_file /run/secrets/radius-eap/server.pem
 require_file /run/secrets/radius-ldap/password
 require_file "${RADIUS_MAB_USERS_FILE}"
@@ -62,9 +61,7 @@ IFS= read -r marker < "${RADIUS_MAB_USERS_FILE}" || true
 [ "${marker:-}" = "# radius-mab-v1" ] \
     || fail "Invalid MAB snapshot marker in ${RADIUS_MAB_USERS_FILE}."
 install -d -m 0750 -o radius -g radius /run/radius-local-eap
-install -m 0640 -o radius -g radius /run/secrets/radius-eap/server.key \
-    /run/radius-local-eap/server.key
-install -m 0644 -o radius -g radius /run/secrets/radius-eap/server.pem \
+install -m 0640 -o radius -g radius /run/secrets/radius-eap/server.pem \
     /run/radius-local-eap/server.pem
 install -m 0644 "${RADIUS_MAB_USERS_FILE}" \
     /opt/etc/raddb/mods-config/files/mab_users/authorize
