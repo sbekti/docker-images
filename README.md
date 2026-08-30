@@ -16,7 +16,7 @@ Docker image builds, published to `ghcr.io/sbekti/<image>`.
 ## Usage
 
 ```bash
-docker pull ghcr.io/sbekti/<image>:<version>
+docker pull ghcr.io/sbekti/radius-local:v2.0.0
 ```
 
 ## Releasing a New Version
