@@ -12,6 +12,7 @@ Docker image builds, published to `ghcr.io/sbekti/<image>`.
 | [radius-local](images/radius-local/) | Local EAP and cached MAC authentication |
 | [samba-ad](images/samba-ad/) | Samba Active Directory DC |
 | [samba-rodc](images/samba-rodc/) | Minimal read-only AD DC for local Wi-Fi authentication |
+| [tailscale](images/tailscale/) | Upstream-compatible Tailscale with a combined CLI and daemon binary |
 
 ## Usage
 

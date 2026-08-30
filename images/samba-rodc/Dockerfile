@@ -1,16 +1,14 @@
 FROM debian:13-slim
 
-ARG SAMBA_MIN_VERSION="2:4.23.9"
+ARG SAMBA_MIN_VERSION="2:4.24.5"
 ARG DEBIAN_FRONTEND="noninteractive"
 
 RUN printf '%s\n' \
       'deb http://deb.debian.org/debian trixie-backports main' \
       > /etc/apt/sources.list.d/trixie-backports.list \
  && apt-get update \
- && apt-get install -y --no-install-recommends \
-      ca-certificates \
  && apt-get install -y --no-install-recommends -t trixie-backports \
-      krb5-user \
+      ca-certificates \
       samba-ad-dc \
       samba-ad-provision \
       samba-common-bin \

@@ -7,6 +7,7 @@ readonly SAM_DB="/var/lib/samba/private/sam.ldb"
 readonly RPC_PORT_RANGE="50000-50019"
 readonly SAMBA_RUNTIME_DIR="/run/samba"
 readonly WINBIND_PRIVILEGED_DIR="/var/lib/samba/winbindd_privileged"
+readonly SAMBA_PREFORK_CHILDREN="${SAMBA_PREFORK_CHILDREN:-1}"
 
 usage() {
     cat <<'EOF'
@@ -15,7 +16,7 @@ Usage: /entrypoint.sh <command>
 Commands:
   run          Validate existing RODC state and start Samba
   join         Interactively join a fresh volume as an RODC
-  healthcheck  Validate RODC state, Samba, and Winbind
+  healthcheck  Ping local Samba and Winbind
 EOF
 }
 
@@ -64,6 +65,11 @@ validate_rodc_state() {
 
     testparm --suppress-prompt -s "${SMB_CONF}" >/dev/null
     /usr/local/sbin/rodc-state-check
+}
+
+validate_runtime_configuration() {
+    [[ "${SAMBA_PREFORK_CHILDREN}" =~ ^[1-9][0-9]*$ ]] \
+        || fail "SAMBA_PREFORK_CHILDREN must be a positive integer."
 }
 
 prepare_runtime() {
@@ -118,11 +124,13 @@ shift || true
 case "${command_name}" in
     run)
         require_no_arguments run "$@"
+        validate_runtime_configuration
         validate_rodc_state
         prepare_runtime
         exec samba \
             --foreground \
             --no-process-group \
+            --option="prefork children = ${SAMBA_PREFORK_CHILDREN}" \
             --option="server services = ${RODC_SERVICES}"
         ;;
     join)
@@ -131,7 +139,6 @@ case "${command_name}" in
         ;;
     healthcheck)
         require_no_arguments healthcheck "$@"
-        validate_rodc_state
         smbcontrol samba ping >/dev/null
         wbinfo --ping >/dev/null
         ;;

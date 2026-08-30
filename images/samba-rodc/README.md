@@ -11,7 +11,7 @@ policy, or password-preload loop.
 
 ## Safety model
 
-- Debian 13 backports must provide Samba 4.23.9 or newer, including the RODC
+- Debian 13 backports must provide Samba 4.24.5 or newer, including the RODC
   fix required by this image.
 - `run` opens the existing `sam.ldb` without creating it and requires Samba to
   identify it as read-only.
@@ -34,11 +34,15 @@ who can change the container.
 |---|---|
 | `join` | Interactively join empty persistent volumes as an RODC |
 | `run` | Validate persisted RODC state and start Samba |
-| `healthcheck` | Validate RODC state and ping local Samba and Winbind |
+| `healthcheck` | Ping local Samba and Winbind |
 
-`run` and `healthcheck` use the persisted Samba configuration and require no
-identity environment variables. Health deliberately remains good during a
-central outage when local Samba and Winbind are usable.
+`run` uses the persisted Samba configuration and requires no identity
+environment variables. Health deliberately remains good during a central
+outage when local Samba and Winbind are usable.
+
+`SAMBA_PREFORK_CHILDREN` sets the worker count for services that support
+Samba's prefork process model. It defaults to `1` for memory-constrained site
+controllers and must be a positive integer.
 
 At startup, `run` normalizes the ownership and permissions of Samba's mounted
 socket directories and removes stale runtime files before starting Samba.
