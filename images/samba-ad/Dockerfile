@@ -33,8 +33,8 @@ RUN apt-get update && apt-get install -y \
 # LDAPS: 636 TCP
 # Global Catalog: 3268 TCP
 # Global Catalog SSL: 3269 TCP
-# RPC default endpoint: 49152 TCP
-EXPOSE 53/tcp 53/udp 88/tcp 88/udp 135/tcp 137/udp 138/udp 139/tcp 389/tcp 389/udp 445/tcp 464/tcp 464/udp 636/tcp 3268/tcp 3269/tcp 49152/tcp
+# RPC dynamic endpoints: 50000-50019 TCP
+EXPOSE 53/tcp 53/udp 88/tcp 88/udp 135/tcp 137/udp 138/udp 139/tcp 389/tcp 389/udp 445/tcp 464/tcp 464/udp 636/tcp 3268/tcp 3269/tcp 50000-50019/tcp
 
 # Setup directories for persistent data
 VOLUME ["/var/lib/samba", "/etc/samba", "/run/samba"]
