@@ -1,10 +1,9 @@
-FROM    alpine:3.24
-LABEL   maintainer=samudra.bekti@gmail.com
+FROM alpine:3.24
 
-RUN     apk --no-cache --update add \
-            asterisk \
-            asterisk-sounds-en \
-            asterisk-sounds-moh
+RUN apk add --no-cache \
+      asterisk \
+      asterisk-sounds-en \
+      asterisk-sounds-moh
 
-ENTRYPOINT  ["/usr/sbin/asterisk"]
-CMD         ["-fp"]
+ENTRYPOINT ["/usr/sbin/asterisk"]
+CMD ["-fp"]

@@ -19,15 +19,7 @@ on:
       image:
         description: 'Image to build (directory name under images/)'
         required: true
-        type: choice
-        options:
-          - actual-cli
-          - asterisk
-          - hermes-tools
-          - ntlm-auth-bridge
-          - radius-local
-          - samba-ad
-          - samba-rodc
+        type: string
 
 permissions:
   contents: read

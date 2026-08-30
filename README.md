@@ -6,12 +6,9 @@ Docker image builds, published to `ghcr.io/sbekti/<image>`.
 
 | Image | Description |
 |-------|-------------|
-| [actual-cli](images/actual-cli/) | Official Actual Budget CLI for scheduled bank sync |
 | [asterisk](images/asterisk/) | Asterisk PBX |
-| [freeradius](images/freeradius/) | Ubuntu 26.04-based FreeRADIUS 3.2.8 server |
 | [hermes-tools](images/hermes-tools/) | Hermes MCP tools and generic seed skills |
 | [ntlm-auth-bridge](images/ntlm-auth-bridge/) | Private HTTP adapter for Samba MS-CHAPv2 authentication |
-| [radius-proxy](images/radius-proxy/) | Ordered RADIUS authentication and accounting proxy |
 | [radius-local](images/radius-local/) | Local EAP and cached MAC authentication |
 | [samba-ad](images/samba-ad/) | Samba Active Directory DC |
 | [samba-rodc](images/samba-rodc/) | Minimal read-only AD DC for local Wi-Fi authentication |
@@ -19,7 +16,7 @@ Docker image builds, published to `ghcr.io/sbekti/<image>`.
 ## Usage
 
 ```bash
-docker pull ghcr.io/sbekti/asterisk:latest
+docker pull ghcr.io/sbekti/<image>:<version>
 ```
 
 ## Releasing a New Version
@@ -43,5 +40,4 @@ matrix result.
 Renovate checks Docker base images and GitHub Actions. Grouped patch updates
 run on Fridays and may automerge after CI passes, grouped minor updates run on
 Saturdays for review, and major updates receive separate reviewable pull
-requests on Sundays. See [BEST_PRACTICES.md](BEST_PRACTICES.md) for the current
-audit and deferred work.
+requests on Sundays.
