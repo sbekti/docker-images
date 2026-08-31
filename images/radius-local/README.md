@@ -63,15 +63,3 @@ the RODC LDAP listener or attach untrusted containers to that network.
 ```bash
 docker build -t radius-local:test images/radius-local
 ```
-
-## MAB integration test
-
-From the repository root, run:
-
-```bash
-tests/radius-local-mab.sh
-```
-
-The test builds the image, starts it with temporary generic fixtures, sends
-loopback RADIUS requests with `radclient`, verifies Guest and mapped VLANs, and
-removes the container and fixtures when it exits.
