@@ -6,3 +6,7 @@ files mab_users {
 files eap_vlan {
     filename = /run/radius-local-eap-vlan
 }
+
+files operator_reply {
+    filename = /run/radius-local-operator-reply
+}

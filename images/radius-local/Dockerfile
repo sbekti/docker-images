@@ -87,7 +87,7 @@ RUN rm -f /opt/etc/raddb/mods-enabled/* /opt/etc/raddb/sites-enabled/* \
  && chown -R radius:radius /opt/var
 
 COPY clients.conf /opt/etc/raddb/clients.conf
-COPY default inner-tunnel /opt/etc/raddb/sites-enabled/
+COPY default inner-tunnel operator-access /opt/etc/raddb/sites-enabled/
 COPY eap files ldap mschap /opt/etc/raddb/mods-enabled/
 COPY --chmod=755 ntlm_auth_bridge /usr/local/bin/ntlm_auth_bridge
 COPY --chmod=755 entrypoint.sh /radius-local-entrypoint.sh
@@ -96,6 +96,9 @@ ENV PATH="/opt/sbin:/opt/bin:${PATH}" \
     RADIUS_LISTEN_ADDRESS="*" \
     RADIUS_LISTEN_PORT="1812" \
     RADIUS_CLIENT_REQUIRE_MESSAGE_AUTHENTICATOR="yes" \
+    RADIUS_OPERATOR_CLIENT_REQUIRE_MESSAGE_AUTHENTICATOR="yes" \
+    RADIUS_OPERATOR_LISTEN_ADDRESS="*" \
+    RADIUS_OPERATOR_LISTEN_PORT="18120" \
     RADIUS_MAB_USERS_FILE="/run/radius-local/mab-users" \
     RADIUS_LDAP_PORT="389"
 
@@ -104,15 +107,20 @@ RUN chgrp -R radius /opt/etc/raddb \
  && mkdir -p \
       /opt/etc/raddb/mods-config/files/mab_users \
       /run/radius-local \
+      /run/secrets/radius-operator \
       /run/secrets/radius-client \
       /run/secrets/radius-eap \
       /run/secrets/radius-ldap \
  && printf '%s\n' '# radius-mab-v1' > /run/radius-local/mab-users \
  && printf '%s\n' 'build-only-client' > /run/secrets/radius-client/secret \
+ && printf '%s\n' 'build-only-operator' > /run/secrets/radius-operator/secret \
  && printf '%s\n' 'build-only-password' > /run/secrets/radius-ldap/password \
  && cp /opt/etc/raddb/certs/server-unencrypted.pem /run/secrets/radius-eap/server.pem \
  && env \
       RADIUS_CLIENT_ADDRESS=192.0.2.0/24 \
+      RADIUS_OPERATOR_CLIENT_ADDRESS=192.0.2.0/24 \
+      RADIUS_OPERATOR_GROUP=network-operators \
+      RADIUS_OPERATOR_REPLY_ATTRIBUTES=Filter-Id=operator \
       RADIUS_DEFAULT_VLAN=10 \
       RADIUS_EAP_VLAN_MAP=wifi-primary=10,wifi-secondary=20 \
       RADIUS_LDAP_BASE_DN=dc=example,dc=test \
@@ -125,12 +133,14 @@ RUN chgrp -R radius /opt/etc/raddb \
       /opt/etc/raddb/mods-config/files/mab_users/authorize \
       /opt/etc/raddb/certs \
       /run/radius-local \
+      /run/radius-local-operator-reply \
       /run/radius-local-eap-vlan \
+      /run/secrets/radius-operator \
       /run/secrets/radius-client \
       /run/secrets/radius-eap \
       /run/secrets/radius-ldap
 
-EXPOSE 1812/udp
+EXPOSE 1812/udp 18120/udp
 
 ENTRYPOINT ["/radius-local-entrypoint.sh"]
 CMD ["radiusd"]

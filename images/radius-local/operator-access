@@ -1,0 +1,39 @@
+server operator-access {
+    client operator-access {
+        ipaddr = $ENV{RADIUS_OPERATOR_CLIENT_ADDRESS}
+        secret = $ENV{RADIUS_OPERATOR_CLIENT_SECRET}
+        require_message_authenticator = $ENV{RADIUS_OPERATOR_CLIENT_REQUIRE_MESSAGE_AUTHENTICATOR}
+    }
+
+    listen {
+        type = auth
+        ipaddr = $ENV{RADIUS_OPERATOR_LISTEN_ADDRESS}
+        port = $ENV{RADIUS_OPERATOR_LISTEN_PORT}
+    }
+
+    authorize {
+        if (!&User-Password || &CHAP-Password || &MS-CHAP-Challenge || &EAP-Message) {
+            reject
+        }
+
+        filter_username
+        ldap
+        if (notfound || reject || fail || invalid) {
+            reject
+        }
+        if (!(LDAP-Group == "$ENV{RADIUS_OPERATOR_GROUP}")) {
+            reject
+        }
+
+        operator_reply
+        update control {
+            Auth-Type := LDAP
+        }
+    }
+
+    authenticate {
+        Auth-Type LDAP {
+            ldap
+        }
+    }
+}
