@@ -41,8 +41,6 @@ server operator-access {
         Auth-Type LDAP {
             ldap
         }
-        Auth-Type MS-CHAP {
-            mschap
-        }
+        mschap
     }
 }
