@@ -12,11 +12,20 @@ server operator-access {
     }
 
     authorize {
-        if (!&User-Password || &CHAP-Password || &MS-CHAP-Challenge || &EAP-Message) {
+        filter_username
+
+        if (&User-Password) {
+            update control {
+                Auth-Type := LDAP
+            }
+        }
+        elsif (&MS-CHAP-Challenge && &MS-CHAP2-Response) {
+            mschap
+        }
+        else {
             reject
         }
 
-        filter_username
         ldap
         if (notfound || reject || fail || invalid) {
             reject
@@ -26,14 +35,14 @@ server operator-access {
         }
 
         operator_reply
-        update control {
-            Auth-Type := LDAP
-        }
     }
 
     authenticate {
         Auth-Type LDAP {
             ldap
+        }
+        Auth-Type MS-CHAP {
+            mschap
         }
     }
 }
