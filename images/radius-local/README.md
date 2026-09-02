@@ -8,8 +8,8 @@ A small FreeRADIUS service for local network authentication.
 - Non-EAP requests use a local, read-only MAC/VLAN snapshot.
 - Unknown MACs and known MACs with a wrong credential receive the default VLAN.
 - Accounting is not accepted or stored.
-- A separate PAP-only listener authenticates human operators through
-  LDAP and requires membership in one configured directory group.
+- A separate listener authenticates human operators with PAP or MSCHAPv2
+  and requires membership in one configured directory group.
 - Successful operator-access requests receive one configurable set of
   RADIUS reply attributes.
 
@@ -50,8 +50,9 @@ a device requires multiple values. Attribute names and types must exist in
 the FreeRADIUS dictionaries included in the image.
 
 FreeRADIUS listens for Wi-Fi authentication on UDP 1812 and operator
-authentication on UDP 18120. The operator-access listener accepts only PAP
-and uses its own client secret. No request policy selects an upstream server.
+authentication on UDP 18120. The operator-access listener uses its own client
+secret. PAP is verified through LDAP; MSCHAPv2 reuses the local NTLM bridge.
+No request policy selects an upstream server.
 
 ## Required mounts
 
