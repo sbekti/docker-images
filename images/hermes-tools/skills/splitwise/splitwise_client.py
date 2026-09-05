@@ -52,7 +52,6 @@ def _request(
     method: str,
     path: str,
     *,
-    json_data: object | None = None,
     form_data: dict[str, str] | None = None,
 ) -> dict[str, object]:
     url = f"{API_BASE}/{path.lstrip('/')}"
@@ -63,11 +62,6 @@ def _request(
         "User-Agent": USER_AGENT,
     }
 
-    if json_data is not None and form_data is not None:
-        raise SplitwiseError("json_data and form_data are mutually exclusive")
-    if json_data is not None:
-        body = json.dumps(json_data).encode("utf-8")
-        headers["Content-Type"] = "application/json"
     if form_data is not None:
         body = urllib.parse.urlencode(form_data).encode("utf-8")
         headers["Content-Type"] = "application/x-www-form-urlencoded"
