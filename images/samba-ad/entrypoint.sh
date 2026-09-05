@@ -27,11 +27,6 @@ set -euo pipefail
 : "${TLS_KEYFILE:=/etc/samba/tls/tls.key}"
 : "${TLS_CAFILE:=}"
 
-if [[ -z "${ADMIN_PASS:-}" ]]; then
-    echo "ERROR: ADMIN_PASS is required." >&2
-    exit 1
-fi
-
 # Log resolved configuration
 echo "=== Samba AD DC Configuration ==="
 echo "  REALM:         ${REALM}"
@@ -59,9 +54,14 @@ fi
 if [ -f /var/lib/samba/private/secrets.keytab ]; then
     echo "Domain already provisioned."
 else
+    if [[ -z "${ADMIN_PASS:-}" ]]; then
+        echo "ERROR: ADMIN_PASS is required to provision a domain." >&2
+        exit 1
+    fi
+
     echo "Provisioning domain..."
     rm -f /etc/samba/smb.conf
-    
+
     # --host-ip forces the initial DNS A record to EXTERNAL_IP.
     samba-tool domain provision \
         --server-role=dc \
@@ -72,16 +72,8 @@ else
         --host-name="${DNS_HOSTNAME%%.*}" \
         --adminpass="${ADMIN_PASS}" \
         --host-ip="${EXTERNAL_IP}" \
-        --option="dns forwarder = ${DNS_FORWARDER}" \
         --option="netbios name = ${NETBIOS_NAME}" \
-        --option="dns hostname = ${DNS_HOSTNAME}" \
-        --option="rpc server dynamic port range = ${RPC_PORT_START}-${RPC_PORT_END}" \
-        --option="allow dns updates = ${DNS_UPDATE_MODE}" \
-        --option="ntlm auth = ${NTLM_AUTH}" \
-        --option="ldap server require strong auth = no" \
-        --option="dns update command = /usr/bin/true"
-    
-    # Keep scheduled samba_dnsupdate from replacing the external DNS A record.
+        --option="dns hostname = ${DNS_HOSTNAME}"
 fi
 
 if [[ ! -f /etc/samba/smb.conf ]]; then
@@ -89,50 +81,56 @@ if [[ ! -f /etc/samba/smb.conf ]]; then
     exit 1
 fi
 
-if [[ "${DNS_FORWARDER}" == *$'\n'* || "${DNS_FORWARDER}" == *$'\r'* ]]; then
-    echo "ERROR: DNS_FORWARDER must be a single line." >&2
-    exit 1
-fi
-if [[ "${DNS_UPDATE_MODE}" == *$'\n'* || "${DNS_UPDATE_MODE}" == *$'\r'* ]]; then
-    echo "ERROR: DNS_UPDATE_MODE must be a single line." >&2
-    exit 1
-fi
-if [[ "${DNS_HOSTNAME}" == *$'\n'* || "${DNS_HOSTNAME}" == *$'\r'* ]]; then
-    echo "ERROR: DNS_HOSTNAME must be a single line." >&2
-    exit 1
-fi
+for name in DNS_FORWARDER RPC_PORT_START RPC_PORT_END DNS_UPDATE_MODE DNS_HOSTNAME NTLM_AUTH TLS_ENABLED TLS_CERTFILE TLS_KEYFILE TLS_CAFILE; do
+    value=${!name}
+    if [[ "${value}" == *$'\n'* || "${value}" == *$'\r'* ]]; then
+        echo "ERROR: ${name} must be a single line." >&2
+        exit 1
+    fi
+done
 
-# Reconcile the forwarder for both new and persisted domains.
-sed -i -E '/^[[:space:]]*dns forwarder[[:space:]]*=/d' /etc/samba/smb.conf
-sed -i "/^\\[global\\][[:space:]]*$/a\\\\tdns forwarder = ${DNS_FORWARDER}" /etc/samba/smb.conf
+case "${TLS_ENABLED}" in
+    yes | no) ;;
+    *) echo "ERROR: TLS_ENABLED must be yes or no." >&2; exit 1 ;;
+esac
 
-# Reconcile the DNS update policy for both new and persisted domains.
-sed -i -E '/^[[:space:]]*allow dns updates[[:space:]]*=/d' /etc/samba/smb.conf
-sed -i "/^\\[global\\][[:space:]]*$/a\\\\tallow dns updates = ${DNS_UPDATE_MODE}" /etc/samba/smb.conf
+# Mutable settings have one owner for both new and persisted domains.
+readonly runtime_conf=/etc/samba/runtime.conf
+sed -i -E \
+    -e '/^[[:space:]]*(dns forwarder|allow dns updates|rpc server port|rpc server dynamic port range|ntlm auth|ldap server require strong auth|dns update command|tls enabled|tls certfile|tls keyfile|tls cafile)[[:space:]]*=/Id' \
+    -e '/^[[:space:]]*include[[:space:]]*=[[:space:]]*\/etc\/samba\/runtime\.conf[[:space:]]*$/Id' \
+    /etc/samba/smb.conf
+sed -i "/^\[global\][[:space:]]*$/a\\\tinclude = ${runtime_conf}" /etc/samba/smb.conf
 
-# Keep the DNS identity lowercase while preserving Samba's uppercase NetBIOS name.
-sed -i -E '/^[[:space:]]*dns hostname[[:space:]]*=/d' /etc/samba/smb.conf
-sed -i "/^\\[global\\][[:space:]]*$/a\\\\tdns hostname = ${DNS_HOSTNAME}" /etc/samba/smb.conf
-
-# Configure TLS in smb.conf (runs every start to ensure settings are always current)
-if [ "${TLS_ENABLED}" = "yes" ]; then
-    echo "Configuring TLS in smb.conf..."
-    # Remove any existing TLS lines to avoid duplicates on restart
-    sed -i '/^\s*tls enabled\s*=/d' /etc/samba/smb.conf
-    sed -i '/^\s*tls certfile\s*=/d' /etc/samba/smb.conf
-    sed -i '/^\s*tls keyfile\s*=/d' /etc/samba/smb.conf
-    sed -i '/^\s*tls cafile\s*=/d' /etc/samba/smb.conf
-    # Inject TLS settings into [global] section right after the [global] line
-    sed -i "/^\[global\]/a\\\\ttls cafile = ${TLS_CAFILE}\\n\\ttls keyfile = ${TLS_KEYFILE}\\n\\ttls certfile = ${TLS_CERTFILE}\\n\\ttls enabled = yes" /etc/samba/smb.conf
-    echo "TLS configured: certfile=${TLS_CERTFILE}, keyfile=${TLS_KEYFILE}, cafile=${TLS_CAFILE:-<empty>}"
-fi
+{
+    printf '\tdns forwarder = %s\n' "${DNS_FORWARDER}"
+    printf '\tallow dns updates = %s\n' "${DNS_UPDATE_MODE}"
+    printf '\trpc server dynamic port range = %s-%s\n' "${RPC_PORT_START}" "${RPC_PORT_END}"
+    printf '\tntlm auth = %s\n' "${NTLM_AUTH}"
+    printf '\tldap server require strong auth = no\n'
+    printf '\tdns update command = /usr/bin/true\n'
+    printf '\ttls enabled = %s\n' "${TLS_ENABLED}"
+    if [[ "${TLS_ENABLED}" == yes ]]; then
+        printf '\ttls certfile = %s\n' "${TLS_CERTFILE}"
+        printf '\ttls keyfile = %s\n' "${TLS_KEYFILE}"
+        printf '\ttls cafile = %s\n' "${TLS_CAFILE}"
+    fi
+} > "${runtime_conf}"
+chmod 0644 "${runtime_conf}"
 
 testparm -s /etc/samba/smb.conf >/dev/null
-effective_netbios_name="$(testparm -s --parameter-name='netbios name' 2>/dev/null)"
-if [[ "${effective_netbios_name,,}" != "${NETBIOS_NAME,,}" ]]; then
-    echo "ERROR: smb.conf netbios name '${effective_netbios_name}' does not match NETBIOS_NAME '${NETBIOS_NAME}'." >&2
-    exit 1
-fi
+check_identity() {
+    local parameter=$1 expected=$2 actual
+    actual="$(testparm -s --parameter-name="${parameter}" 2>/dev/null)"
+    if [[ "${actual,,}" != "${expected,,}" ]]; then
+        echo "ERROR: smb.conf ${parameter} '${actual}' does not match '${expected}'." >&2
+        exit 1
+    fi
+}
+check_identity "netbios name" "${NETBIOS_NAME}"
+check_identity realm "${REALM}"
+check_identity workgroup "${DOMAIN}"
+check_identity "dns hostname" "${DNS_HOSTNAME}"
 
 # Prepare /etc/krb5.conf for in-container Kerberos admin tools (kinit, ldapsearch, etc.).
 # The generated file prefers DNS KDC discovery, but cluster DNS often lacks Kerberos SRV records.
@@ -148,12 +146,13 @@ fi
 
 # Apply password policy settings
 echo "Applying password policy..."
-samba-tool domain passwordsettings set --complexity="${PWD_COMPLEXITY}"
-samba-tool domain passwordsettings set --min-pwd-length="${PWD_MIN_LENGTH}"
-samba-tool domain passwordsettings set --history-length="${PWD_HISTORY}"
-samba-tool domain passwordsettings set --min-pwd-age="${PWD_MIN_AGE}"
-samba-tool domain passwordsettings set --max-pwd-age="${PWD_MAX_AGE}"
-samba-tool domain passwordsettings set --store-plaintext="${PWD_STORE_PLAINTEXT}"
+samba-tool domain passwordsettings set \
+    --complexity="${PWD_COMPLEXITY}" \
+    --min-pwd-length="${PWD_MIN_LENGTH}" \
+    --history-length="${PWD_HISTORY}" \
+    --min-pwd-age="${PWD_MIN_AGE}" \
+    --max-pwd-age="${PWD_MAX_AGE}" \
+    --store-plaintext="${PWD_STORE_PLAINTEXT}"
 echo "Password policy applied."
 
 echo "Starting Samba AD DC..."
