@@ -45,18 +45,6 @@ require_variable() {
     fi
 }
 
-set_runtime_configuration() {
-    sed -i -E \
-        '/^[[:space:]]*(dns update command|ldap server require strong auth|ntlm auth|rpc server dynamic port range|server services)[[:space:]]*=/Id' \
-        "${SMB_CONF}"
-    sed -i "/^\[global\][[:space:]]*$/a\\
-\tdns update command = /usr/bin/false\n\
-\tldap server require strong auth = no\n\
-\tntlm auth = mschapv2-and-ntlmv2-only\n\
-\trpc server dynamic port range = ${RPC_PORT_RANGE}\n\
-\tserver services = ${RODC_SERVICES}" "${SMB_CONF}"
-}
-
 validate_rodc_state() {
     test -f "${SMB_CONF}" \
         || fail "Missing ${SMB_CONF}; join this container as an RODC first."
@@ -113,7 +101,6 @@ join_rodc() {
         --option="rpc server dynamic port range = ${RPC_PORT_RANGE}" \
         --option="server services = ${RODC_SERVICES}"
 
-    set_runtime_configuration
     validate_rodc_state
     echo "RODC join completed."
 }
