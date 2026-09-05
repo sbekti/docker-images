@@ -75,7 +75,7 @@ else
         --option="dns forwarder = ${DNS_FORWARDER}" \
         --option="netbios name = ${NETBIOS_NAME}" \
         --option="dns hostname = ${DNS_HOSTNAME}" \
-        --option="rpc server port = ${RPC_PORT_START}-${RPC_PORT_END}" \
+        --option="rpc server dynamic port range = ${RPC_PORT_START}-${RPC_PORT_END}" \
         --option="allow dns updates = ${DNS_UPDATE_MODE}" \
         --option="ntlm auth = ${NTLM_AUTH}" \
         --option="ldap server require strong auth = no" \
