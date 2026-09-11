@@ -22,6 +22,7 @@ persistent state of its own.
 | Variable | Purpose |
 |---|---|
 | `RADIUS_CLIENT_ADDRESS` | NAS address or subnet accepted by FreeRADIUS |
+| `RADIUS_CLIENT_LIMIT_PROXY_STATE` | Reject unprotected `Proxy-State`; default `yes` |
 | `RADIUS_CLIENT_REQUIRE_MESSAGE_AUTHENTICATOR` | Require Attribute 80; default `yes` |
 | `RADIUS_OPERATOR_CLIENT_ADDRESS` | Network-device address/subnet accepted by the operator-access listener |
 | `RADIUS_OPERATOR_CLIENT_REQUIRE_MESSAGE_AUTHENTICATOR` | Require Attribute 80; default `yes` |
@@ -53,6 +54,11 @@ FreeRADIUS listens for Wi-Fi authentication on UDP 1812 and operator
 authentication on UDP 18120. The operator-access listener uses its own client
 secret. PAP is verified through LDAP; MSCHAPv2 reuses the local NTLM bridge.
 No request policy selects an upstream server.
+
+Set `RADIUS_CLIENT_REQUIRE_MESSAGE_AUTHENTICATOR=no` only for legacy NAS
+clients that cannot send Attribute 80. Keep
+`RADIUS_CLIENT_LIMIT_PROXY_STATE=yes` so requests cannot use an unprotected
+`Proxy-State` attribute.
 
 ## Required mounts
 
