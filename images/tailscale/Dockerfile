@@ -1,6 +1,6 @@
 ARG TAILSCALE_VERSION=v1.102.3
 
-FROM --platform=$BUILDPLATFORM golang:1.26.8-alpine3.23 AS build
+FROM --platform=$BUILDPLATFORM golang:1.27.1-alpine3.23 AS build
 
 ARG TARGETARCH
 ARG TARGETOS
