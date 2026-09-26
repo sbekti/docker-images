@@ -45,6 +45,20 @@ require_variable() {
     fi
 }
 
+ensure_private_ldap_bind() {
+    local setting='ldap server require strong auth'
+
+    if grep -Eiq "^[[:space:]]*${setting}[[:space:]]*=[[:space:]]*no[[:space:]]*$" "${SMB_CONF}"; then
+        return
+    fi
+    if grep -Eiq "^[[:space:]]*${setting}[[:space:]]*=" "${SMB_CONF}"; then
+        fail "${SMB_CONF} has a conflicting ${setting} value."
+    fi
+    grep -Eq '^\[global\][[:space:]]*$' "${SMB_CONF}" \
+        || fail "Missing [global] section in ${SMB_CONF}."
+    sed -i '/^\[global\][[:space:]]*$/a\    ldap server require strong auth = no' "${SMB_CONF}"
+}
+
 validate_rodc_state() {
     test -f "${SMB_CONF}" \
         || fail "Missing ${SMB_CONF}; join this container as an RODC first."
@@ -53,6 +67,8 @@ validate_rodc_state() {
 
     testparm --suppress-prompt -s "${SMB_CONF}" >/dev/null
     /usr/local/sbin/rodc-state-check
+    ensure_private_ldap_bind
+    testparm --suppress-prompt -s "${SMB_CONF}" >/dev/null
 }
 
 validate_runtime_configuration() {

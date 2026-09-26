@@ -20,7 +20,10 @@ policy, or password-preload loop.
 - Dynamic RPC is fixed to TCP ports 50000–50019.
 - DNS registration and DNS serving are disabled.
 - Simple LDAP is permitted for authorization on an isolated container bridge;
-  do not expose the LDAP listener to untrusted networks.
+  do not expose the LDAP listener to untrusted networks. Both `join` and `run`
+  ensure the persisted Samba configuration contains
+  `ldap server require strong auth = no`; an explicit conflicting value stops
+  startup instead of being overwritten.
 - No supported command provisions a writable domain.
 
 The safety boundary is the supported entrypoint. Like any privileged,
