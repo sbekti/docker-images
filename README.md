@@ -32,11 +32,16 @@ git push origin asterisk/v1.0.0
 This builds and pushes `ghcr.io/sbekti/asterisk:v1.0.0` and `:latest`.
 
 Pushing to `main` automatically builds any images whose files changed, tagged as `:main`.
+Documentation-only pushes skip the workflow. Release tags and manual builds
+remain available regardless of changed paths.
 
 Pull requests that change an image build that image for both `linux/amd64` and
 `linux/arm64` without publishing it. A change to the shared build workflow
 builds every image. The final `Image build gate` job summarizes the required
 matrix result.
+
+New commits to a pull request cancel its older builds. Publishing and manual
+runs remain independent.
 
 Renovate checks Docker base images and GitHub Actions. Grouped patch updates
 run on Fridays and may automerge after CI passes, grouped minor updates run on
