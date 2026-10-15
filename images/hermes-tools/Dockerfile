@@ -1,4 +1,4 @@
-FROM python:3.13.16-slim
+FROM python:3.15.0-slim
 
 ENV HERMES_TOOLS_MCP_HOST=0.0.0.0 \
     HERMES_TOOLS_MCP_PORT=9101 \
@@ -9,8 +9,8 @@ ENV HERMES_TOOLS_MCP_HOST=0.0.0.0 \
 WORKDIR /opt/hermes-tools
 
 RUN python -m pip install --no-cache-dir --root-user-action=ignore \
-      mcp==1.26.0 \
-      starlette==1.3.1 \
+      mcp==2.3.0 \
+      starlette==1.8.0 \
  && python -m pip check
 
 COPY --chown=10000:10000 hermes_tools_server.py ./

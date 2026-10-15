@@ -6,7 +6,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from skills.splitwise.splitwise_client import (
     DEFAULT_CURRENCY,
@@ -22,7 +22,7 @@ from skills.splitwise.splitwise_client import (
 HOST = os.environ.get("HERMES_TOOLS_MCP_HOST", "0.0.0.0")
 PORT = int(os.environ.get("HERMES_TOOLS_MCP_PORT", "9101"))
 
-mcp = FastMCP("hermes_tools", host=HOST, port=PORT)
+mcp = MCPServer("hermes_tools")
 
 
 def _splitwise_error(exc: Exception) -> dict[str, Any]:
@@ -107,4 +107,4 @@ def splitwise_create_expense(
 
 
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http")
+    mcp.run(transport="streamable-http", host=HOST, port=PORT)
