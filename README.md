@@ -43,7 +43,11 @@ matrix result.
 New commits to a pull request cancel its older builds. Publishing and manual
 runs remain independent.
 
-Renovate checks Docker base images and GitHub Actions. Grouped patch updates
-run on Fridays and may automerge after CI passes, grouped minor updates run on
-Saturdays for review, and major updates receive separate reviewable pull
-requests on Sundays.
+Renovate checks Docker base images, GitHub Actions, and Python requirements.
+Routine updates run on Fridays in America/New_York. Grouped patches may
+automerge after CI passes; grouped minors and separate majors need review.
+Recognized GitHub security alerts bypass the weekly schedule.
+
+FreeRADIUS source versions and checksums, Samba package minimums, and runtime
+OS packages need release or distribution checks rather than version-only PRs.
+Published version tags must exist before homeinfra updates its consumers.
