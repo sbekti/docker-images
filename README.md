@@ -8,6 +8,7 @@ Docker image builds, published to `ghcr.io/sbekti/<image>`.
 |-------|-------------|
 | [asterisk](images/asterisk/) | Asterisk PBX |
 | [hermes-tools](images/hermes-tools/) | Hermes MCP tools and generic seed skills |
+| [mobile-uplink](images/mobile-uplink/) | Small local Wi-Fi uplink page for a mobile RouterOS gateway |
 | [ntlm-auth-bridge](images/ntlm-auth-bridge/) | Private HTTP adapter for Samba MS-CHAPv2 authentication |
 | [radius-local](images/radius-local/) | Local Wi-Fi and network-device authentication |
 | [samba-ad](images/samba-ad/) | Samba Active Directory DC |
@@ -43,7 +44,7 @@ matrix result.
 New commits to a pull request cancel its older builds. Publishing and manual
 runs remain independent.
 
-Renovate checks Docker base images, GitHub Actions, and Python requirements.
+Renovate checks Docker base images, GitHub Actions, Python requirements, and Go modules.
 Routine updates run on Fridays in America/New_York. Grouped patches may
 automerge after CI passes; grouped minors and separate majors need review.
 Recognized GitHub security alerts bypass the weekly schedule.
