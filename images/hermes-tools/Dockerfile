@@ -1,4 +1,4 @@
-FROM python:3.15.1-slim
+FROM python:3.15.2-slim
 
 ENV HERMES_TOOLS_MCP_HOST=0.0.0.0 \
     HERMES_TOOLS_MCP_PORT=9101 \
