@@ -246,3 +246,31 @@ func TestConfigValidation(t *testing.T) {
 		t.Fatal("duplicate accepted")
 	}
 }
+
+func TestConfiguredNetworkCounts(t *testing.T) {
+	for _, count := range []int{1, 4} {
+		f := newFixture()
+		a := testApp(f)
+		if count == 1 {
+			a.config.Radios = a.config.Radios[:2]
+			for i := range a.config.Radios {
+				a.config.Radios[i].APs = a.config.Radios[i].APs[:1]
+			}
+		} else {
+			f.rows["/interface/wifi/configuration"] = append(f.rows["/interface/wifi/configuration"], record{"name": "extra-profile", "ssid": "Fourth example"})
+			f.rows["/interface/wifi"] = append(f.rows["/interface/wifi"], record{".id": "*extra", "name": "additional-interface", "master-interface": "radio-b", "configuration": "extra-profile", "disabled": "true"})
+			a.config.Radios[1].APs = append(a.config.Radios[1].APs, apBinding{Profile: "extra-profile", VirtualInterface: "additional-interface"})
+		}
+		state, err := readStatus(f.run, a.config)
+		if err != nil || !state.WiFiReady || len(state.WiFi) != count {
+			t.Fatalf("count=%d state=%+v error=%v", count, state.WiFi, err)
+		}
+		selected := map[string]bool{}
+		for _, n := range state.WiFi {
+			selected[n.SSID] = true
+		}
+		if err = applyAPs(f.run, a.config, state, selected); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
