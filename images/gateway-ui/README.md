@@ -12,12 +12,23 @@ ROUTER_PASSWORD_FILE defaults to /run/secrets/router-password and ROUTER_CA_FILE
 to /run/secrets/router-ca.pem. Mount these files read-only. Passwords are never
 part of the image. LISTEN_ADDRESS defaults to :8080.
 
-JSON contains station_profile, wan_list and radios. Each radio has interface,
-uplink and an ordered aps array. Each AP has profile and, except for the first
-binding, virtual_interface. Provision these objects and DHCP clients first.
+JSON contains station_profile, wan_list, radios and optional restart_containers.
+Only explicitly listed container names receive start/restart controls. Native
+RouterOS commands run after confirmation, using the same form guards. Container
+state describes the process, not VPN connectivity. Native container restart
+support is required.
+
+The Maintenance section also shows live RouterOS version and uptime. Signal bars
+use existing RSSI readings; scan rows show the reported security type.
+
+Each radio has interface, uplink and an ordered aps array. Each AP has profile
+and, except for the first binding, virtual_interface. Provision these objects and DHCP clients first.
 Identity, SSIDs, bands, routes, addresses and DNS come from RouterOS.
 The app toggles prepared clients; it does not choose routing or DNS policy.
 Selections persist natively. Disconnected station radios remain reserved.
+Scanning surveys the selected radio; only Connect performs a band handover.
+A scan can briefly interrupt that radio. Use an independent uplink when testing
+a remote development preview over the radio being scanned.
 
 Every permitted client may operate the panel. Preserve client source addresses.
 Host, source CIDR, Origin and CSRF guards protect forms. API permissions are

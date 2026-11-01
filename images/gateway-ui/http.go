@@ -3,8 +3,11 @@ package main
 import (
 	"context"
 	"crypto/subtle"
+	"errors"
 	"html/template"
+	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/netip"
 	"net/url"
@@ -30,7 +33,7 @@ func (a *app) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if r.Method == http.MethodGet && r.URL.Path != "/" || r.Method == http.MethodPost && !map[string]bool{"/scan": true, "/connect": true, "/disconnect": true, "/wifi": true}[r.URL.Path] {
+	if r.Method == http.MethodGet && r.URL.Path != "/" && r.URL.Path != "/container" || r.Method == http.MethodPost && !map[string]bool{"/scan": true, "/connect": true, "/disconnect": true, "/wifi": true, "/container": true}[r.URL.Path] {
 		http.NotFound(w, r)
 		return
 	}
@@ -56,17 +59,32 @@ func (a *app) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer closeConn()
-	s, err := readStatus(run, a.config)
-	if err != nil {
-		a.respond(w, r, http.StatusServiceUnavailable, view{Token: a.token, Error: "wifi"})
+	if r.URL.Path == "/container" {
+		a.container(w, r, run)
 		return
 	}
-	v := view{status: s, Token: a.token, SelectedSSID: s.SSID}
+	m := readMaintenance(run, a.config)
+	s, err := readStatus(run, a.config)
+	if err != nil {
+		a.respond(w, r, http.StatusServiceUnavailable, view{Token: a.token, status: s, Maintenance: m, Error: "wifi"})
+		return
+	}
+	v := view{status: s, Token: a.token, SelectedSSID: s.SSID, SelectedBand: s.Band, Maintenance: m}
 	if r.Method == http.MethodGet {
 		v.Error = r.URL.Query().Get("error")
+		switch r.URL.Query().Get("result") {
+		case "start":
+			v.Message = "Start requested."
+		case "restart":
+			v.Message = "Restart requested."
+		}
+		if band := r.URL.Query().Get("band"); band == "2g" || band == "5g" {
+			v.SelectedBand = band
+		}
 		if r.URL.Query().Has("scan") {
 			if cached := a.scan.Load(); cached != nil {
-				v.Networks = *cached
+				v.Networks = cached.Networks
+				v.SelectedBand = cached.Band
 				if len(v.Networks) == 0 {
 					v.Message = "No networks found."
 				}
@@ -103,6 +121,7 @@ func (a *app) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				v.Error = "band"
 				break
 			}
+			v.SelectedBand = band
 			ssid, password := r.PostForm.Get("ssid"), r.PostForm.Get("password")
 			v.SelectedSSID = ssid
 			if r.URL.Path == "/connect" && (!utf8.ValidString(ssid) || len(ssid) == 0 || len(ssid) > 32 || strings.ContainsAny(ssid, "\x00\r\n") ||
@@ -110,13 +129,30 @@ func (a *app) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				v.Error = "network"
 				break
 			}
-			err = selectBand(run, a.config, s, band)
-			if err == nil && r.URL.Path == "/scan" {
+			radio := s.bandRadio(a.config, band)
+			if radio.ID == "" {
+				v.Error = "band"
+				break
+			}
+			if r.URL.Path == "/scan" {
+				// Scanning must not hand over the connected radio or change DHCP.
 				var rows []record
-				rows, err = run("/interface/wifi/scan", "=number="+s.bandRadio(a.config, band).Name, "=duration=8s")
+				rows, err = run("/interface/wifi/scan", "=number="+radio.Name, "=duration=8s")
 				v.Networks = networks(rows)
-			} else if err == nil {
-				err = connect(run, a.config, s.bandRadio(a.config, band), ssid, password)
+				if err != nil {
+					v.Error = "scan"
+					var transport net.Error
+					if errors.As(err, &transport) || errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, context.Canceled) {
+						v.Error = "scan-connection"
+					}
+					// Record the class only: API error text may contain credentials.
+					log.Printf("scan failed (%T)", err)
+				}
+			} else {
+				err = selectBand(run, a.config, s, band)
+				if err == nil {
+					err = connect(run, a.config, radio, ssid, password)
+				}
 			}
 		case "/disconnect":
 			_, err = run("/interface/wifi/set", "=.id="+s.Radio.ID, "=disabled=yes")
@@ -124,7 +160,7 @@ func (a *app) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				_, err = run("/ip/dhcp-client/set", "=.id="+s.DHCP.ID, "=disabled=yes")
 			}
 		}
-		if err != nil {
+		if err != nil && v.Error == "" {
 			// API traps may contain user-supplied credentials. Never render or log them.
 			v.Error = "apply"
 		}
@@ -143,8 +179,11 @@ func (a *app) respond(w http.ResponseWriter, r *http.Request, code int, v view) 
 		query.Set("error", v.Error)
 		query.Set("ssid", v.SelectedSSID)
 	} else if r.URL.Path == "/scan" {
-		a.scan.Store(&v.Networks)
+		a.scan.Store(&scanResult{Band: v.SelectedBand, Networks: v.Networks})
 		query.Set("scan", "1")
+	}
+	if v.SelectedBand == "2g" || v.SelectedBand == "5g" {
+		query.Set("band", v.SelectedBand)
 	}
 	target := "/"
 	if len(query) > 0 {
@@ -158,7 +197,7 @@ func (a *app) render(w http.ResponseWriter, code int, v view) {
 	tmpl := page
 	if path := os.Getenv("PAGE_FILE"); path != "" {
 		var err error
-		tmpl, err = template.ParseFiles(path)
+		tmpl, err = template.New("page.html").Funcs(templateFuncs).ParseFiles(path)
 		if err != nil {
 			log.Print("Cannot load page template")
 			http.Error(w, "Cannot load page.", http.StatusInternalServerError)

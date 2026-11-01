@@ -9,9 +9,10 @@ import (
 )
 
 type config struct {
-	StationProfile string        `json:"station_profile"`
-	WANList        string        `json:"wan_list"`
-	Radios         []radioConfig `json:"radios"`
+	StationProfile    string        `json:"station_profile"`
+	WANList           string        `json:"wan_list"`
+	Radios            []radioConfig `json:"radios"`
+	RestartContainers []string      `json:"restart_containers,omitempty"`
 }
 type radioConfig struct {
 	Interface string      `json:"interface"`
@@ -50,6 +51,13 @@ func (c config) validate() error {
 		return errors.New("incomplete configuration")
 	}
 	names := map[string]bool{}
+	for _, name := range c.RestartContainers {
+		if name == "" || names[name] {
+			return errors.New("invalid restart container")
+		}
+		names[name] = true
+	}
+	names = map[string]bool{}
 	uplinks := 0
 	for _, r := range c.Radios {
 		if r.Interface == "" || names[r.Interface] || len(r.APs) == 0 {

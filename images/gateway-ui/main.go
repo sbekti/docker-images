@@ -26,17 +26,20 @@ import (
 //go:embed page.html
 var pageHTML string
 
-var page = template.Must(template.New("page").Parse(pageHTML))
+var page = template.Must(template.New("page").Funcs(templateFuncs).Parse(pageHTML))
 
 // Only these fixed messages can be displayed through a redirect URL.
 var formErrors = map[string]string{
-	"router":    "Cannot reach the router. Refresh to try again.",
-	"wifi":      "Router Wi-Fi settings are unavailable. Refresh to try again.",
-	"selection": "Check the Wi-Fi selection.",
-	"band":      "Check the Wi-Fi band.",
-	"network":   "Check the network name and password.",
-	"apply":     "Could not apply settings. Refresh and retry.",
-	"busy":      "Busy. Retry shortly.",
+	"router":          "Cannot reach the router. Refresh to try again.",
+	"wifi":            "Router Wi-Fi settings are unavailable. Refresh to try again.",
+	"selection":       "Check the Wi-Fi selection.",
+	"band":            "Check the Wi-Fi band.",
+	"network":         "Check the network name and password.",
+	"apply":           "Could not apply settings. Refresh and retry.",
+	"scan":            "Could not scan. Try again.",
+	"scan-connection": "Router connection interrupted during scan. Reload and try again.",
+	"busy":            "Busy. Retry shortly.",
+	"container":       "Could not change the container. Check its state before retrying.",
 }
 
 type record = map[string]string
@@ -48,13 +51,18 @@ type app struct {
 	trusted     []netip.Prefix
 	config      config
 	dial        dialAPI
-	mu          sync.Mutex                // One radio change or scan at a time, without a job queue.
-	scan        atomic.Pointer[[]network] // Latest scan only; no credentials or saved networks.
+	mu          sync.Mutex                 // One radio change or scan at a time, without a job queue.
+	scan        atomic.Pointer[scanResult] // Latest scan only; no credentials or saved networks.
+}
+
+type scanResult struct {
+	Band     string
+	Networks []network
 }
 
 type network struct {
-	SSID, Security string
-	Signal         int
+	SSID, Security, SecurityLabel string
+	Signal                        int
 }
 
 type connection struct {
@@ -74,8 +82,10 @@ type status struct {
 
 type view struct {
 	status
-	Token, Error, Message, SelectedSSID string
-	Networks                            []network
+	Token, Error, Message, SelectedSSID, SelectedBand string
+	Networks                                          []network
+	Maintenance                                       maintenance
+	Confirmation                                      *containerAction
 }
 
 func env(key, fallback string) string {
@@ -179,7 +189,7 @@ func networks(rows []record) []network {
 			method = "personal"
 		}
 		signal, _ := strconv.Atoi(row["signal"])
-		n := network{ssid, method, signal}
+		n := network{ssid, method, securityLabel(security), signal}
 		key := ssid + "\x00" + method
 		if old, exists := best[key]; !exists || signal > old.Signal {
 			best[key] = n
