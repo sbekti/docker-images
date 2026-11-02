@@ -33,7 +33,7 @@ func (a *app) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if r.Method == http.MethodGet && r.URL.Path != "/" && r.URL.Path != "/container" || r.Method == http.MethodPost && !map[string]bool{"/scan": true, "/connect": true, "/disconnect": true, "/wifi": true, "/container": true}[r.URL.Path] {
+	if r.Method == http.MethodGet && r.URL.Path != "/" && r.URL.Path != "/container" || r.Method == http.MethodPost && !map[string]bool{"/scan": true, "/connect": true, "/disconnect": true, "/wifi": true, "/container": true, "/ping": true, "/dns": true}[r.URL.Path] {
 		http.NotFound(w, r)
 		return
 	}
@@ -49,6 +49,10 @@ func (a *app) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer a.mu.Unlock()
+	}
+	if r.URL.Path == "/ping" || r.URL.Path == "/dns" {
+		a.diagnose(w, r)
+		return
 	}
 	// Finish a requested band handover even if the phone briefly reconnects.
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 40*time.Second)
@@ -171,6 +175,10 @@ func (a *app) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // Redirect form results to GET so reload never repeats a scan or settings change.
 func (a *app) respond(w http.ResponseWriter, r *http.Request, code int, v view) {
 	if r.Method == http.MethodGet {
+		if r.URL.Query().Has("diagnostic") {
+			v.Diagnostic = a.diagnostic.Load()
+			v.DiagnosticsOpen = true
+		}
 		a.render(w, code, v)
 		return
 	}

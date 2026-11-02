@@ -51,7 +51,8 @@ type app struct {
 	trusted     []netip.Prefix
 	config      config
 	dial        dialAPI
-	mu          sync.Mutex                 // One radio change or scan at a time, without a job queue.
+	mu          sync.Mutex // One command at a time, without a job queue.
+	diagnostic  atomic.Pointer[diagnosticResult]
 	scan        atomic.Pointer[scanResult] // Latest scan only; no credentials or saved networks.
 }
 
@@ -86,6 +87,8 @@ type view struct {
 	Networks                                          []network
 	Maintenance                                       maintenance
 	Confirmation                                      *containerAction
+	Diagnostic                                        *diagnosticResult
+	DiagnosticsOpen                                   bool
 }
 
 func env(key, fallback string) string {
@@ -144,11 +147,7 @@ func main() {
 			if err != nil {
 				return nil, err
 			}
-			rows := make([]record, 0, len(reply.Re))
-			for _, row := range reply.Re {
-				rows = append(rows, row.Map)
-			}
-			return rows, nil
+			return replyRecords(reply), nil
 		}, closeConn, nil
 	}
 	a := &app{host: os.Getenv("UI_HOST"), token: rand.Text(), trusted: trusted, config: cfg, dial: dial}
@@ -206,4 +205,16 @@ func networks(rows []record) []network {
 		return result[i].Signal > result[j].Signal
 	})
 	return result
+}
+
+// Scalar commands such as resolve return their value in !done rather than !re.
+func replyRecords(reply *routeros.Reply) []record {
+	rows := make([]record, 0, len(reply.Re))
+	for _, row := range reply.Re {
+		rows = append(rows, row.Map)
+	}
+	if len(rows) == 0 && reply.Done != nil && reply.Done.Map["ret"] != "" {
+		rows = append(rows, record{"ret": reply.Done.Map["ret"]})
+	}
+	return rows
 }

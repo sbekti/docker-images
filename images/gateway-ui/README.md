@@ -41,3 +41,9 @@ is cached in memory. No credentials are placed in redirect URLs or logs.
 Validate with go test -race ./..., go vet ./..., and govulncheck ./....
 PAGE_FILE optionally reloads a development template on every request.
 Keep deployment configuration and credentials outside the public source tree.
+
+Diagnostics runs five IPv4 pings or a single-address DNS lookup on the router.
+An optional DNS server applies to that lookup only. Tests use normal routing,
+finish within 15 seconds, and do not reproduce a client's forwarding path.
+Only the latest result is held in memory, shared like scan results. Reloading
+does not rerun a test. No target history or deployment-specific defaults are stored.

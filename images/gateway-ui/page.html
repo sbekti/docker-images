@@ -48,6 +48,28 @@
 </form>
 {{else}}<p>Wi-Fi settings are unavailable.</p>{{end}}
 </details>
+<details id="diagnostics" {{if .DiagnosticsOpen}}open{{end}}><summary>Diagnostics</summary>
+<p class="secondary">Tests run from the router.</p>
+<h2>Ping</h2>
+<form method="post" action="/ping">
+<input type="hidden" name="csrf" value="{{.Token}}">
+<label for="ping-target">Host</label><input id="ping-target" name="target" required maxlength="253" placeholder="IPv4 address or hostname" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{with .Diagnostic}}{{if eq .Tool "Ping"}}{{.Target}}{{end}}{{end}}">
+<div class="actions"><button>Ping</button></div></form>
+<h2>DNS lookup</h2>
+<form method="post" action="/dns">
+<input type="hidden" name="csrf" value="{{.Token}}">
+<label for="dns-target">Hostname</label><input id="dns-target" name="target" required maxlength="253" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{with .Diagnostic}}{{if eq .Tool "DNS lookup"}}{{.Target}}{{end}}{{end}}">
+<label for="dns-server">DNS server (optional)</label><input id="dns-server" name="server" placeholder="Router default" autocomplete="off" autocapitalize="none" spellcheck="false" value="{{with .Diagnostic}}{{.Server}}{{end}}">
+<div class="actions"><button>Look up</button></div></form>
+{{with .Diagnostic}}<h2>{{.Tool}} result</h2>
+<dl><dt>Target</dt><dd>{{.Target}}</dd>
+{{if eq .Tool "DNS lookup"}}<dt>DNS server</dt><dd>{{if .Server}}{{.Server}}{{else}}Router default{{end}}</dd>{{end}}
+{{if .Address}}<dt>Address</dt><dd>{{.Address}}</dd>{{end}}
+{{if .Replies}}<dt>Replies</dt><dd>{{.Replies}} / 5</dd><dt>Packet loss</dt><dd>{{.Loss}}%</dd>{{end}}
+{{if .Average}}<dt>Average RTT</dt><dd>{{.Average}}</dd>{{end}}
+{{if .Elapsed}}<dt>Elapsed</dt><dd>{{.Elapsed}}</dd>{{end}}</dl>
+{{if .Error}}<p role="alert" class="error">{{.Error}}</p>{{end}}{{end}}
+</details>
 <details id="maintenance"><summary>Maintenance</summary>
 {{range .Maintenance.Containers}}<div class="service-row"><span>{{.Name}}<span class="status-note service-state">{{.State}}</span></span>{{if .Action}}<a class="button" href="/container?container={{.Name}}&amp;action={{.Action}}">{{if eq .Action "restart"}}Restart{{else}}Start{{end}}</a>{{end}}</div>{{end}}
 <dl><dt>RouterOS</dt><dd>{{if .Maintenance.Version}}{{.Maintenance.Version}}{{else}}Unavailable{{end}}</dd><dt>Uptime</dt><dd>{{if .Maintenance.Uptime}}{{.Maintenance.Uptime}}{{else}}Unavailable{{end}}</dd></dl>
