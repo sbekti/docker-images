@@ -46,6 +46,13 @@ server default {
     }
 
     post-auth {
+        if (&reply:Tunnel-Private-Group-Id) {
+            update reply {
+                Mikrotik-Wireless-VLANID := &reply:Tunnel-Private-Group-Id
+                Mikrotik-Wireless-VLANID-Type := 0
+            }
+        }
+
         Post-Auth-Type REJECT {
             eap
         }

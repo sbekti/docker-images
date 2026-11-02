@@ -7,6 +7,8 @@ A small FreeRADIUS service for local network authentication.
 - Authenticated users without a configured group are rejected.
 - Non-EAP requests use a local, read-only MAC/VLAN snapshot.
 - Unknown MACs and known MACs with a wrong credential receive the default VLAN.
+- VLAN replies include both standard tunnel attributes and MikroTik wireless
+  attributes, derived from the same selected VLAN.
 - Accounting is not accepted or stored.
 - A separate listener authenticates human operators with PAP or MSCHAPv2
   and requires membership in one configured directory group.
@@ -86,4 +88,5 @@ the RODC LDAP listener or attach untrusted containers to that network.
 
 ```bash
 docker build -t radius-local:test images/radius-local
+sh images/radius-local/test.sh
 ```
