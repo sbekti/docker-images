@@ -32,7 +32,7 @@ a remote development preview over the radio being scanned.
 
 Every permitted client may operate the panel. Preserve client source addresses.
 Host, source CIDR, Origin and CSRF guards protect forms. API permissions are
-read,write,test,api, with the account restricted to its container address.
+read,write,test,api,reboot, with the account restricted to its container address.
 AP passwords and PPSK keys are never read.
 
 Forms redirect to GET so reload never repeats an action. Only the latest scan
@@ -47,3 +47,8 @@ An optional DNS server applies to that lookup only. Tests use normal routing,
 finish within 15 seconds, and do not reproduce a client's forwarding path.
 Only the latest result is held in memory, shared like scan results. Reloading
 does not rerun a test. No target history or deployment-specific defaults are stored.
+
+Maintenance includes router restart and shutdown, each with a one-use confirmation.
+Shutdown halts the router; cycle power to start it again. Wait 30 seconds before
+removing power. A power action can disconnect the page before acknowledgement.
+Commands are never retried automatically. Reopen the page after reconnecting.

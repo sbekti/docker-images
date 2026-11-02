@@ -5,15 +5,20 @@
 <style>
 *{box-sizing:border-box}body{font:16px/1.5 system-ui,sans-serif;color:#222;background:#f5f5f5;margin:0}main{max-width:30rem;margin:2rem auto;padding:1.25rem;background:white;border:1px solid #ccc}h1{font-size:1.5rem;margin:0}h2{font-size:1rem;margin:1rem 0 .5rem}p{margin:.75rem 0;overflow-wrap:anywhere}label{display:block;margin:.8rem 0 .25rem}input,button{font:inherit;min-height:44px;padding:.6rem;border:1px solid #888;border-radius:3px}input{width:100%;color:#222;background:white}button{cursor:pointer;background:#174b75;color:white;border-color:#174b75}a{color:#174b75}small,.secondary,dt{color:#666}.actions{display:flex;gap:.5rem;margin:1rem 0}.actions button{flex:1}.scan{display:flex;align-items:center;gap:1rem;margin:1rem 0}.scan button{flex:1}.fallback{display:flex;align-items:center;gap:.4rem;margin:0;white-space:nowrap;font-size:1rem;min-height:44px}.fallback input{width:auto;min-height:0}.network{text-decoration:none;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.65rem 0;border-bottom:1px solid #ddd;overflow-wrap:anywhere}.error{color:#a00}summary{cursor:pointer;padding:.6rem 0;min-height:44px}dl{display:grid;grid-template-columns:100px minmax(0,1fr);gap:.25rem .75rem;margin:.5rem 0}dd{margin:0;overflow-wrap:anywhere}@media(max-width:32rem){main{margin:0;border:0;min-height:100vh}}
 .signal{display:inline-flex;align-items:flex-end;gap:3px;height:18px;flex-shrink:0}.signal i{width:4px;background:#ddd;border-radius:1px}.signal i:nth-child(1){height:5px}.signal i:nth-child(2){height:9px}.signal i:nth-child(3){height:13px}.signal i:nth-child(4){height:17px}.signal.strong{--signal-color:#24733c}.signal.fair{--signal-color:#a66a00}.signal.weak{--signal-color:#b22920}.signal[data-level="1"] i:first-child,.signal[data-level="2"] i:nth-child(-n+2),.signal[data-level="3"] i:nth-child(-n+3),.signal[data-level="4"] i{background:var(--signal-color)}.network .ssid{min-width:0}a.network .ssid{text-decoration:underline}.network-info{display:flex;align-items:center;gap:.75rem;flex-shrink:0}.service-row{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin:.75rem 0}.status-note{display:block;font-size:14px;color:#666}.service-state{text-transform:capitalize}.signal-value{display:flex;align-items:center;gap:.5rem}small{font-size:inherit}.button{display:inline-block;min-height:44px;padding:.6rem;border:1px solid #174b75;border-radius:3px;text-decoration:none;background:#174b75;color:white}.button.secondary{background:white;border-color:#888;color:#333}.actions a{flex:1;text-align:center}details+details{border-top:1px solid #ddd;margin-top:.5rem;padding-top:.25rem}
+button.danger{background:#b22920;border-color:#b22920}
 </style>
 <main>
 <h1>{{if .Hostname}}{{.Hostname}}{{else}}Router unavailable{{end}}</h1>
-{{if .Confirmation}}
-<h2>{{if eq .Confirmation.Action "restart"}}Restart{{else}}Start{{end}} {{.Confirmation.Name}}?</h2>
-{{if eq .Confirmation.Action "restart"}}<p>This briefly interrupts the service.</p>{{end}}
-<form method="post" action="/container">
+{{if .PowerResult}}
+<h2>{{.PowerResult.Title}}</h2><p>{{.PowerResult.Message}}</p>
+<a class="button secondary" href="/#maintenance">Return to router</a>
+{{else if .Confirmation}}
+<h2>{{.Confirmation.Title}}</h2>
+{{if .Confirmation.Message}}<p>{{.Confirmation.Message}}</p>{{end}}
+<form method="post" action="{{.Confirmation.Path}}">
 <input type="hidden" name="csrf" value="{{.Token}}"><input type="hidden" name="container" value="{{.Confirmation.Name}}"><input type="hidden" name="action" value="{{.Confirmation.Action}}">
-<div class="actions"><a class="button secondary" href="/#maintenance">Cancel</a><button type="submit">{{if eq .Confirmation.Action "restart"}}Restart{{else}}Start{{end}}</button></div></form>
+{{if .Confirmation.Nonce}}<input type="hidden" name="confirmation" value="{{.Confirmation.Nonce}}">{{end}}
+<div class="actions"><a class="button secondary" href="/#maintenance">Cancel</a><button type="submit" {{if .Confirmation.Danger}}class="danger"{{end}}>{{.Confirmation.Label}}</button></div></form>
 {{else}}
 
 {{if .Uplink}}<p class="secondary">Uplink in use: {{.Uplink}}</p>{{end}}
@@ -73,6 +78,7 @@
 <details id="maintenance"><summary>Maintenance</summary>
 {{range .Maintenance.Containers}}<div class="service-row"><span>{{.Name}}<span class="status-note service-state">{{.State}}</span></span>{{if .Action}}<a class="button" href="/container?container={{.Name}}&amp;action={{.Action}}">{{if eq .Action "restart"}}Restart{{else}}Start{{end}}</a>{{end}}</div>{{end}}
 <dl><dt>RouterOS</dt><dd>{{if .Maintenance.Version}}{{.Maintenance.Version}}{{else}}Unavailable{{end}}</dd><dt>Uptime</dt><dd>{{if .Maintenance.Uptime}}{{.Maintenance.Uptime}}{{else}}Unavailable{{end}}</dd></dl>
+<div class="actions"><a class="button" href="/power?action=restart">Restart router</a><a class="button secondary" href="/power?action=shutdown">Shut down router</a></div>
 </details>
 {{end}}
 </main></html>

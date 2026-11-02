@@ -47,13 +47,15 @@ type runAPI func(...string) ([]record, error)
 type dialAPI func(context.Context) (runAPI, func(), error)
 
 type app struct {
-	host, token string
-	trusted     []netip.Prefix
-	config      config
-	dial        dialAPI
-	mu          sync.Mutex // One command at a time, without a job queue.
-	diagnostic  atomic.Pointer[diagnosticResult]
-	scan        atomic.Pointer[scanResult] // Latest scan only; no credentials or saved networks.
+	host, token       string
+	trusted           []netip.Prefix
+	config            config
+	dial              dialAPI
+	mu                sync.Mutex // One command at a time, without a job queue.
+	powerConfirmation atomic.Pointer[confirmation]
+	powerResult       atomic.Pointer[powerResult]
+	diagnostic        atomic.Pointer[diagnosticResult]
+	scan              atomic.Pointer[scanResult] // Latest scan only; no credentials or saved networks.
 }
 
 type scanResult struct {
@@ -86,9 +88,10 @@ type view struct {
 	Token, Error, Message, SelectedSSID, SelectedBand string
 	Networks                                          []network
 	Maintenance                                       maintenance
-	Confirmation                                      *containerAction
+	Confirmation                                      *confirmation
 	Diagnostic                                        *diagnosticResult
 	DiagnosticsOpen                                   bool
+	PowerResult                                       *powerResult
 }
 
 func env(key, fallback string) string {

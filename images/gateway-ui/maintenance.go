@@ -11,7 +11,10 @@ type maintenance struct {
 	Containers      []containerState
 }
 type containerState struct{ Name, State, Action string }
-type containerAction struct{ Name, Action string }
+type confirmation struct {
+	Name, Action, Path, Title, Message, Label, Nonce string
+	Danger                                           bool
+}
 
 func containerStatus(row record) containerState {
 	c := containerState{Name: row["name"], State: "Unavailable"}
@@ -80,7 +83,11 @@ func (a *app) container(w http.ResponseWriter, r *http.Request, run runAPI) {
 	}
 	if r.Method == http.MethodGet {
 		ids, _ := run("/system/identity/print", "=.proplist=name")
-		v := view{Token: a.token, Confirmation: &containerAction{Name: name, Action: action}}
+		label, message := "Start", ""
+		if action == "restart" {
+			label, message = "Restart", "This briefly interrupts the service."
+		}
+		v := view{Token: a.token, Confirmation: &confirmation{Name: name, Action: action, Path: "/container", Title: label + " " + name + "?", Message: message, Label: label}}
 		if len(ids) == 1 {
 			v.Hostname = ids[0]["name"]
 		}

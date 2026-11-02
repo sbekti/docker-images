@@ -33,7 +33,7 @@ func (a *app) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if r.Method == http.MethodGet && r.URL.Path != "/" && r.URL.Path != "/container" || r.Method == http.MethodPost && !map[string]bool{"/scan": true, "/connect": true, "/disconnect": true, "/wifi": true, "/container": true, "/ping": true, "/dns": true}[r.URL.Path] {
+	if r.Method == http.MethodGet && r.URL.Path != "/" && r.URL.Path != "/container" && r.URL.Path != "/power" || r.Method == http.MethodPost && !map[string]bool{"/scan": true, "/connect": true, "/disconnect": true, "/wifi": true, "/container": true, "/ping": true, "/dns": true, "/power": true}[r.URL.Path] {
 		http.NotFound(w, r)
 		return
 	}
@@ -49,6 +49,10 @@ func (a *app) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer a.mu.Unlock()
+	}
+	if r.URL.Path == "/power" {
+		a.power(w, r)
+		return
 	}
 	if r.URL.Path == "/ping" || r.URL.Path == "/dns" {
 		a.diagnose(w, r)
