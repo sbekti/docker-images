@@ -19,6 +19,9 @@ The image builds FreeRADIUS 3.2.10 from the pinned upstream source. It has no
 database, upstream RADIUS server, background synchronization process, or
 persistent state of its own.
 
+The Alpine base is pinned to 3.24.1 for unprivileged RouterOS 7.24.5 containers.
+Alpine 3.24.3 fails before the application starts with a hostname-file error.
+
 ## Environment
 
 | Variable | Purpose |
