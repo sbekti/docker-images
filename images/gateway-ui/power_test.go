@@ -72,7 +72,7 @@ func TestPowerConfirmationAndReplay(t *testing.T) {
 }
 
 func TestPowerRejectionAndLostConnection(t *testing.T) {
-	for _, err := range []error{&routeros.DeviceError{Sentence: &proto.Sentence{Map: map[string]string{"message": "private-api-secret"}}}, io.EOF, errors.New("private-api-secret")} {
+	for _, err := range []error{&routeros.DeviceError{Sentence: &proto.Sentence{Word: "!trap", Map: map[string]string{"message": "private-api-secret"}}}, &routeros.DeviceError{Sentence: &proto.Sentence{Word: "!fatal", Map: map[string]string{"message": "private-api-secret"}}}, io.EOF, errors.New("private-api-secret")} {
 		f := newFixture()
 		a := testApp(f)
 		original := a.dial
@@ -88,6 +88,14 @@ func TestPowerRejectionAndLostConnection(t *testing.T) {
 		request(a, "GET", "/power?action=restart", nil)
 		confirm := a.powerConfirmation.Load()
 		w := request(a, "POST", "/power", url.Values{"csrf": {a.token}, "action": {"restart"}, "confirmation": {confirm.Nonce}})
+		want := "Result unconfirmed"
+		var rejected *routeros.DeviceError
+		if errors.As(err, &rejected) && rejected.Sentence.Word == "!trap" {
+			want = "Request rejected"
+		}
+		if !strings.Contains(w.Body.String(), want) {
+			t.Fatal(w.Body.String())
+		}
 		if strings.Contains(w.Body.String(), "private-api-secret") || !strings.Contains(w.Body.String(), "Return to router") || a.powerConfirmation.Load() != nil {
 			t.Fatal(w.Body.String())
 		}

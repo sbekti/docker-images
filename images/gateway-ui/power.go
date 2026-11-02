@@ -65,7 +65,7 @@ func (a *app) power(w http.ResponseWriter, r *http.Request) {
 	// Consume confirmation before sending exactly one native command. Never retry.
 	if _, err := run(command); err != nil {
 		var rejected *routeros.DeviceError
-		if errors.As(err, &rejected) {
+		if errors.As(err, &rejected) && rejected.Sentence.Word == "!trap" {
 			result.Title = "Request rejected"
 			result.Message = "The router rejected the request. Return to Maintenance before trying again."
 		} else {
