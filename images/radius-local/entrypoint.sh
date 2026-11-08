@@ -97,6 +97,8 @@ IFS= read -r marker < "${RADIUS_MAB_USERS_FILE}" || true
 [ "${marker:-}" = "# radius-mab-v1" ] \
     || fail "Invalid MAB snapshot marker in ${RADIUS_MAB_USERS_FILE}."
 install -d -m 0750 -o radius -g radius /run/radius-local-runtime
+# RouterOS files are mode 0666; FreeRADIUS requires a non-writable policy copy.
+install -m 0644 "${RADIUS_MAB_USERS_FILE}" /run/radius-local-runtime/mab-users
 install -m 0640 -o radius -g radius /run/secrets/radius-eap/server.pem \
     /run/radius-local-runtime/server.pem
 
@@ -110,7 +112,7 @@ render_operator_reply_attributes
 
 if [ "${1:-}" = radiusd ] || [ "${1:-}" = freeradius ]; then
     shift
-    set -- radiusd -f "$@"
+    set -- radiusd -f -l stdout "$@"
 fi
 
 exec "$@"

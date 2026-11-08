@@ -35,6 +35,9 @@ docker run -d --name "$container" --network none \
             mac=${entry%:*}; vlan=${entry#*:}
             printf "%s Cleartext-Password := \"%s\"\n    Tunnel-Type := VLAN,\n    Tunnel-Medium-Type := IEEE-802,\n    Tunnel-Private-Group-Id := \"%s\"\n\n" "$mac" "$mac" "$vlan" >> /run/radius-local/mab-users
         done
+        # Match RouterOS bind-mount permissions.
+        chmod 0777 /run/radius-local
+        chmod 0666 /run/radius-local/mab-users
         exec /radius-local-entrypoint.sh radiusd
     ' >/dev/null
 for attempt in 1 2 3 4 5; do

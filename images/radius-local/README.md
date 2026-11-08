@@ -81,7 +81,7 @@ The snapshot must start with `# radius-mab-v1`. A marker-only file is a
 valid empty snapshot. A missing, empty, or incorrectly marked snapshot stops
 the container, so a first deployment cannot silently treat every device as
 unknown. Runtime fetch failures should leave the last-known-good file in
-place. The snapshot is loaded directly when the container starts; restart the
+place. The snapshot is copied into RAM with safe permissions at startup; restart the
 container after replacing it. Mount `/run/radius-local-runtime` on a small
 RAM filesystem (4 MiB is sufficient) for generated configuration and the
 runtime certificate copy. The source snapshot and secrets remain read-only.

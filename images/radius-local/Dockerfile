@@ -1,5 +1,5 @@
-# Alpine 3.24.3 fails to start unprivileged on RouterOS 7.24.5.
-ARG ALPINE_VERSION="3.24.4"
+# Keep the RouterOS-verified base; newer releases need a device smoke test.
+ARG ALPINE_VERSION="3.24.1"
 ARG FREERADIUS_RELEASE="release_3_2_10"
 ARG FREERADIUS_SHA256="3e9f24439ce976c04e4c56441722a3bd18677a61dd17f67bc8863eb4ed36cd4b"
 
@@ -108,7 +108,6 @@ ENV PATH="/opt/sbin:/opt/bin:${PATH}" \
 RUN chgrp -R radius /opt/etc/raddb \
  && chmod -R g+rX /opt/etc/raddb \
  && mkdir -p \
-      /opt/etc/raddb/mods-config/files/mab_users \
       /run/radius-local \
       /run/secrets/radius-operator \
       /run/secrets/radius-client \
@@ -133,7 +132,6 @@ RUN chgrp -R radius /opt/etc/raddb \
       RADIUS_WINBIND_DOMAIN=EXAMPLE \
       /radius-local-entrypoint.sh radiusd -XC \
  && rm -rf \
-      /opt/etc/raddb/mods-config/files/mab_users/authorize \
       /opt/etc/raddb/certs \
       /run/radius-local \
       /run/radius-local-runtime \
