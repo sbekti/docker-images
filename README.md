@@ -10,6 +10,7 @@ Docker image builds, published to `ghcr.io/sbekti/<image>`.
 | [hermes-tools](images/hermes-tools/) | Hermes MCP tools and generic seed skills |
 | [gateway-ui](images/gateway-ui/) | Local RouterOS control panel for Wi-Fi and Internet settings |
 | [ntlm-auth-bridge](images/ntlm-auth-bridge/) | Private HTTP adapter for Samba MS-CHAPv2 authentication |
+| [rsyslog](images/rsyslog/) | Generic non-root syslog runtime |
 | [radius-local](images/radius-local/) | Local Wi-Fi and network-device authentication |
 | [samba-ad](images/samba-ad/) | Samba Active Directory DC |
 | [samba-rodc](images/samba-rodc/) | Minimal read-only AD DC for local Wi-Fi authentication |
