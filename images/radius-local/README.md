@@ -9,6 +9,8 @@ A small FreeRADIUS service for local network authentication.
 - Unknown MACs and known MACs with a wrong credential receive the default VLAN.
 - VLAN replies include both standard tunnel attributes and MikroTik wireless
   attributes, derived from the same selected VLAN.
+- Final decisions are logged to stdout with the user/MAC, AP, NAS, VLAN,
+  result, and reason. Passwords, keys, and full request attributes are excluded.
 - Accounting is not accepted or stored.
 - A separate listener authenticates human operators with PAP or MSCHAPv2
   and requires membership in one configured directory group.
@@ -79,8 +81,11 @@ The snapshot must start with `# radius-mab-v1`. A marker-only file is a
 valid empty snapshot. A missing, empty, or incorrectly marked snapshot stops
 the container, so a first deployment cannot silently treat every device as
 unknown. Runtime fetch failures should leave the last-known-good file in
-place. The snapshot is imported when the container starts; restart the
-container after replacing it.
+place. The snapshot is loaded directly when the container starts; restart the
+container after replacing it. Mount `/run/radius-local-runtime` on a small
+RAM filesystem (4 MiB is sufficient) for generated configuration and the
+runtime certificate copy. The source snapshot and secrets remain read-only.
+Keep `/tmp` bounded and in RAM too.
 
 The password and EAP private-key files must be readable at startup. The server
 certificate file must contain any intermediate chain required by clients.

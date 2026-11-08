@@ -43,4 +43,17 @@ server operator-access {
         }
         mschap
     }
+
+    post-auth {
+        radius_auth {
+            fail = 1
+        }
+        ok
+        Post-Auth-Type REJECT {
+            radius_auth {
+                fail = 1
+            }
+            ok
+        }
+    }
 }

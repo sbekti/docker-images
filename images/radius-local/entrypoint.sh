@@ -19,7 +19,7 @@ valid_vlan() {
 
 render_eap_vlan_map() (
     IFS=,
-    : > /run/radius-local-eap-vlan
+    : > /run/radius-local-runtime/eap-vlan
 
     for mapping in ${RADIUS_EAP_VLAN_MAP}; do
         group="${mapping%%=*}"
@@ -36,15 +36,15 @@ render_eap_vlan_map() (
             "    Tunnel-Type := VLAN," \
             "    Tunnel-Medium-Type := IEEE-802," \
             "    Tunnel-Private-Group-Id := \"${vlan}\"" \
-            >> /run/radius-local-eap-vlan
+            >> /run/radius-local-runtime/eap-vlan
     done
 
-    chmod 0644 /run/radius-local-eap-vlan
+    chmod 0644 /run/radius-local-runtime/eap-vlan
 )
 
 render_operator_reply_attributes() (
     IFS=,
-    output=/run/radius-local-operator-reply
+    output=/run/radius-local-runtime/operator-reply
     previous=
     printf '%s\n' DEFAULT > "${output}"
 
@@ -96,11 +96,9 @@ require_file "${RADIUS_MAB_USERS_FILE}"
 IFS= read -r marker < "${RADIUS_MAB_USERS_FILE}" || true
 [ "${marker:-}" = "# radius-mab-v1" ] \
     || fail "Invalid MAB snapshot marker in ${RADIUS_MAB_USERS_FILE}."
-install -d -m 0750 -o radius -g radius /run/radius-local-eap
+install -d -m 0750 -o radius -g radius /run/radius-local-runtime
 install -m 0640 -o radius -g radius /run/secrets/radius-eap/server.pem \
-    /run/radius-local-eap/server.pem
-install -m 0644 "${RADIUS_MAB_USERS_FILE}" \
-    /opt/etc/raddb/mods-config/files/mab_users/authorize
+    /run/radius-local-runtime/server.pem
 
 RADIUS_CLIENT_SECRET="$(cat /run/secrets/radius-client/secret)"
 RADIUS_OPERATOR_CLIENT_SECRET="$(cat /run/secrets/radius-operator/secret)"

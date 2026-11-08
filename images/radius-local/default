@@ -7,6 +7,9 @@ server default {
 
     authorize {
         if (&EAP-Message) {
+            update control {
+                Tmp-String-0 := "eap"
+            }
             eap
         }
         else {
@@ -15,10 +18,14 @@ server default {
                 Tunnel-Medium-Type := IEEE-802
                 Tunnel-Private-Group-Id := "$ENV{RADIUS_DEFAULT_VLAN}"
             }
+            update control {
+                Tmp-String-0 := "registered_mac"
+            }
             mab_users
             if (noop) {
                 update control {
                     Auth-Type := Accept
+                    Tmp-String-0 := "unknown_mac"
                 }
             }
             else {
@@ -36,6 +43,9 @@ server default {
                 reject = 1
             }
             if (reject) {
+                update control {
+                    Tmp-String-0 := "credential_mismatch"
+                }
                 update reply {
                     Tunnel-Private-Group-Id := "$ENV{RADIUS_DEFAULT_VLAN}"
                 }
@@ -53,8 +63,17 @@ server default {
             }
         }
 
+        radius_auth {
+            fail = 1
+        }
+        ok
+
         Post-Auth-Type REJECT {
             eap
+            radius_auth {
+                fail = 1
+            }
+            ok
         }
     }
 }

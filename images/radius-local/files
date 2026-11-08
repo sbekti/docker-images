@@ -1,12 +1,12 @@
 files mab_users {
-    filename = ${modconfdir}/files/mab_users/authorize
+    filename = $ENV{RADIUS_MAB_USERS_FILE}
     key = "%{tolower:%{User-Name}}"
 }
 
 files eap_vlan {
-    filename = /run/radius-local-eap-vlan
+    filename = /run/radius-local-runtime/eap-vlan
 }
 
 files operator_reply {
-    filename = /run/radius-local-operator-reply
+    filename = /run/radius-local-runtime/operator-reply
 }

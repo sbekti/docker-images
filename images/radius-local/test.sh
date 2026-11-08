@@ -10,6 +10,8 @@ openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=radius.example.test 
 cat "$work/key.pem" >> "$work/server.pem"
 chmod 644 "$work/server.pem"
 docker run -d --name "$container" --network none \
+    --tmpfs /tmp:rw,size=16m \
+    --tmpfs /run/radius-local-runtime:rw,size=4m \
     -v "$work/server.pem:/run/secrets/radius-eap/server.pem:ro" \
     -e RADIUS_CLIENT_ADDRESS=127.0.0.1 \
     -e RADIUS_OPERATOR_CLIENT_ADDRESS=192.0.2.1 \
@@ -46,9 +48,33 @@ check() {
     printf '%s\n' "$reply" | grep -Eq "Tunnel-Private-Group-Id(:0)? = \"$3\""
     printf '%s\n' "$reply" | grep -Eq "Mikrotik-Wireless-VLANID = $3$"
     printf '%s\n' "$reply" | grep -Eq 'Mikrotik-Wireless-VLANID(-Type|type) = (0|802.1q)$'
+    docker logs "$container" 2>&1 | grep -Eq "radius_auth .*user=$1 .*vlan=$3 reason=$5$"
     printf 'PASS %s\n' "$4"
 }
-check 020000000001 020000000001 100 trusted
-check 020000000002 020000000002 20 iot
-check 020000000003 020000000003 10 unknown
-check 020000000001 wrong-password 10 wrong-credential
+check 020000000001 020000000001 100 trusted registered_mac
+check 020000000002 020000000002 20 iot registered_mac
+check 020000000003 020000000003 10 unknown unknown_mac
+check 020000000001 wrong-password 10 wrong-credential credential_mismatch
+
+if docker logs "$container" 2>&1 | grep -Eq 'wrong-password|test-secret|BEGIN .*PRIVATE KEY'; then
+    echo 'Credentials appeared in authentication logs' >&2
+    exit 1
+fi
+if docker diff "$container" | grep -q '/opt/etc/raddb'; then
+    echo 'Runtime modified the image configuration' >&2
+    exit 1
+fi
+printf '%s\n' 'PASS credential-free logs and RAM runtime'
+
+# A local logging failure must not change authentication either.
+docker exec "$container" sed -i 's|/dev/stdout|/dev/null/unwritable|' /opt/etc/raddb/mods-enabled/radius_auth
+docker restart "$container" >/dev/null
+for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    if [ "$(docker logs "$container" 2>&1 | grep -c 'Ready to process requests')" -ge 2 ]; then break; fi
+    sleep 1
+done
+reply=$(printf 'User-Name = "020000000001"\nUser-Password = "020000000001"\n' |
+    docker exec -i "$container" radclient -x -r 1 -t 3 -S /run/secrets/radius-client/secret 127.0.0.1:1812 auth)
+printf '%s\n' "$reply" | grep -q 'Received Access-Accept'
+printf '%s\n' "$reply" | grep -Eq 'Tunnel-Private-Group-Id(:0)? = "100"'
+printf '%s\n' 'PASS authentication survives logging failure'

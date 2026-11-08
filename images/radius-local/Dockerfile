@@ -27,7 +27,7 @@ WORKDIR /src
 RUN : > src/modules/stable \
  && ./configure \
       --prefix=/opt \
-      --with-modules='rlm_always rlm_eap rlm_expr rlm_files rlm_ldap rlm_mschap rlm_pap' \
+      --with-modules='rlm_always rlm_eap rlm_expr rlm_files rlm_ldap rlm_linelog rlm_mschap rlm_pap' \
  && make -j"$(nproc)" \
  && make install \
  && openssl x509 -in /opt/etc/raddb/certs/server.pem \
@@ -52,6 +52,7 @@ RUN : > src/modules/stable \
       rlm_expr \
       rlm_files \
       rlm_ldap \
+      rlm_linelog \
       rlm_mschap \
       rlm_pap; \
     do mv "/opt/lib/${library}.so" /opt/lib.keep/; done \
@@ -89,7 +90,7 @@ RUN rm -f /opt/etc/raddb/mods-enabled/* /opt/etc/raddb/sites-enabled/* \
 
 COPY clients.conf /opt/etc/raddb/clients.conf
 COPY default inner-tunnel operator-access /opt/etc/raddb/sites-enabled/
-COPY eap files ldap mschap /opt/etc/raddb/mods-enabled/
+COPY eap files ldap mschap radius_auth /opt/etc/raddb/mods-enabled/
 COPY --chmod=755 ntlm_auth_bridge /usr/local/bin/ntlm_auth_bridge
 COPY --chmod=755 entrypoint.sh /radius-local-entrypoint.sh
 
@@ -135,8 +136,7 @@ RUN chgrp -R radius /opt/etc/raddb \
       /opt/etc/raddb/mods-config/files/mab_users/authorize \
       /opt/etc/raddb/certs \
       /run/radius-local \
-      /run/radius-local-operator-reply \
-      /run/radius-local-eap-vlan \
+      /run/radius-local-runtime \
       /run/secrets/radius-operator \
       /run/secrets/radius-client \
       /run/secrets/radius-eap \
