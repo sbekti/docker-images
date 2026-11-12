@@ -1,4 +1,0 @@
-linelog radius_auth {
-    filename = /dev/stdout
-    format = "radius_auth server=%{Virtual-Server} result=%{reply:Packet-Type} user=%{User-Name} mac=%{%{Calling-Station-Id}:-%{User-Name}} ap=%{%{Called-Station-Id}:-none} nas=%{%{NAS-IP-Address}:-%{Packet-Src-IP-Address}} vlan=%{%{reply:Tunnel-Private-Group-Id}:-none} reason=%{%{control:Tmp-String-0}:-authentication}"
-}

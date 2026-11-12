@@ -1,100 +1,48 @@
-# Local RADIUS
+# FreeRADIUS runtime
 
-A small FreeRADIUS service for local network authentication.
+A small FreeRADIUS image for RouterOS and Docker. The image supplies the server,
+its selected modules, and the NTLM bridge client. Deployments supply the complete
+native FreeRADIUS configuration. No site settings or credentials belong in the image.
 
-- PEAP/MSCHAPv2 authenticates only against a local Samba RODC and fails closed.
-- The first matching directory group in `RADIUS_EAP_VLAN_MAP` selects the VLAN.
-- Authenticated users without a configured group are rejected.
-- Non-EAP requests use a local, read-only MAC/VLAN snapshot.
-- Unknown MACs and known MACs with a wrong credential receive the default VLAN.
-- VLAN replies include both standard tunnel attributes and MikroTik wireless
-  attributes, derived from the same selected VLAN.
-- Final decisions are logged to stdout with the user/MAC, AP, NAS, VLAN,
-  result, and reason. Passwords, keys, and full request attributes are excluded.
-- Accounting is not accepted or stored.
-- A separate listener authenticates human operators with PAP or MSCHAPv2
-  and requires membership in one configured directory group.
-- Successful operator-access requests receive one configurable set of
-  RADIUS reply attributes.
+## Inputs
 
-The image builds FreeRADIUS 3.2.10 from the pinned upstream source. It has no
-database, upstream RADIUS server, background synchronization process, or
-persistent state of its own.
+Mount these directories read-only:
 
-The Alpine base is pinned to 3.24.1 for unprivileged RouterOS 7.24.5 containers.
-Alpine 3.24.3 fails before the application starts with a hostname-file error.
+| Container path | Contents |
+| --- | --- |
+| `/etc/raddb` | Complete native configuration, including `radiusd.conf` |
+| `/run/radius-local` | Policy data referenced by the configuration |
+| `/run/secrets` | Certificates and private keys referenced by the configuration |
 
-## Environment
+Provide bounded RAM filesystems at `/run/radius-local-runtime` (4 MiB) and
+`/tmp` (16 MiB). At startup the image copies the three inputs into `config`,
+`policy`, and `secrets` under the runtime directory, with private permissions.
+This accommodates RouterOS source mounts that expose world-writable files.
+Source files remain untouched. Refer to the runtime paths in configuration.
 
-| Variable | Purpose |
-|---|---|
-| `RADIUS_CLIENT_ADDRESS` | NAS address or subnet accepted by FreeRADIUS |
-| `RADIUS_CLIENT_LIMIT_PROXY_STATE` | Reject unprotected `Proxy-State`; default `yes` |
-| `RADIUS_CLIENT_REQUIRE_MESSAGE_AUTHENTICATOR` | Require Attribute 80; default `yes` |
-| `RADIUS_OPERATOR_CLIENT_ADDRESS` | Network-device address/subnet accepted by the operator-access listener |
-| `RADIUS_OPERATOR_CLIENT_REQUIRE_MESSAGE_AUTHENTICATOR` | Require Attribute 80; default `yes` |
-| `RADIUS_OPERATOR_GROUP` | Directory group authorized for operator access |
-| `RADIUS_OPERATOR_LISTEN_ADDRESS` | Operator-access listener; default `*` |
-| `RADIUS_OPERATOR_LISTEN_PORT` | Operator-access port; default `18120` |
-| `RADIUS_OPERATOR_REPLY_ATTRIBUTES` | Comma-separated `Attribute=value` entries returned after successful authentication |
-| `RADIUS_DEFAULT_VLAN` | VLAN returned for unknown or rejected non-EAP devices |
-| `RADIUS_EAP_VLAN_MAP` | Ordered `group=vlan` pairs separated by commas |
-| `RADIUS_LDAP_SERVER` | RODC LDAP address on the private container network |
-| `RADIUS_LDAP_PORT` | RODC LDAP port; default `389` |
-| `RADIUS_LDAP_IDENTITY` | Read-only LDAP service-account identity |
-| `RADIUS_LDAP_BASE_DN` | LDAP search base |
-| `RADIUS_NTLM_AUTH_BRIDGE_URL` | Local NTLM authentication bridge base URL |
-| `RADIUS_WINBIND_DOMAIN` | Short domain used when an identity omits one |
-| `RADIUS_LISTEN_ADDRESS` | Authentication listener; default `*` |
-| `RADIUS_LISTEN_PORT` | Authentication port; default `1812` |
-| `RADIUS_MAB_USERS_FILE` | Cached users file; default `/run/radius-local/mab-users` |
+The default command runs FreeRADIUS in the foreground against the runtime
+configuration. Pass a complete command to override it, for example:
 
-Map order is authorization priority. Group names may not contain commas or
-equals signs. VLANs must be in the range 1–4094.
+```bash
+docker run --rm \
+  --mount type=bind,src=/srv/radius/config,dst=/etc/raddb,readonly \
+  --mount type=bind,src=/srv/radius/policy,dst=/run/radius-local,readonly \
+  --mount type=bind,src=/srv/radius/secrets,dst=/run/secrets,readonly \
+  --tmpfs /run/radius-local-runtime:size=4m \
+  --tmpfs /tmp:size=16m \
+  radius-local:test radiusd -C -d /run/radius-local-runtime/config
+```
 
-Operator reply values may contain equals signs; commas separate
-entries. Attributes are added with `+=`, so an attribute may be repeated when
-a device requires multiple values. Attribute names and types must exist in
-the FreeRADIUS dictionaries included in the image.
+The image has no environment-variable configuration interface, policy generator,
+or synchronization process. A deployment must install a valid configuration
+before starting it. Keep secrets out of normal logs; debug output may expose them.
 
-FreeRADIUS listens for Wi-Fi authentication on UDP 1812 and operator
-authentication on UDP 18120. The operator-access listener uses its own client
-secret. PAP is verified through LDAP; MSCHAPv2 reuses the local NTLM bridge.
-No request policy selects an upstream server.
-
-Set `RADIUS_CLIENT_REQUIRE_MESSAGE_AUTHENTICATOR=no` only for legacy NAS
-clients that cannot send Attribute 80. Keep
-`RADIUS_CLIENT_LIMIT_PROXY_STATE=yes` so requests cannot use an unprotected
-`Proxy-State` attribute.
-
-## Required mounts
-
-| Path | Purpose |
-|---|---|
-| `/run/radius-local/mab-users` | Current snapshot in FreeRADIUS users-file format |
-| `/run/secrets/radius-operator/secret` | Operator-access RADIUS shared secret |
-| `/run/secrets/radius-client/secret` | NAS shared secret |
-| `/run/secrets/radius-eap/server.pem` | EAP server certificate, chain, and private key |
-| `/run/secrets/radius-ldap/password` | LDAP service-account password |
-
-The snapshot must start with `# radius-mab-v1`. A marker-only file is a
-valid empty snapshot. A missing, empty, or incorrectly marked snapshot stops
-the container, so a first deployment cannot silently treat every device as
-unknown. Runtime fetch failures should leave the last-known-good file in
-place. The snapshot is copied into RAM with safe permissions at startup; restart the
-container after replacing it. Mount `/run/radius-local-runtime` on a small
-RAM filesystem (4 MiB is sufficient) for generated configuration and the
-runtime certificate copy. The source snapshot and secrets remain read-only.
-Keep `/tmp` bounded and in RAM too.
-
-The password and EAP private-key files must be readable at startup. The server
-certificate file must contain any intermediate chain required by clients.
-The EAP key and certificate are imported into private runtime files at startup.
-
-LDAP uses a simple bind only on the private container network. Do not publish
-the RODC LDAP listener or attach untrusted containers to that network.
+The RouterOS-verified Alpine base is retained. Newer bases require a device smoke
+test because Alpine 3.24.3 failed before application startup on RouterOS 7.24.5.
 
 ```bash
 docker build -t radius-local:test images/radius-local
 sh images/radius-local/test.sh
 ```
+
+Authentication policy and its tests belong to the deployment supplying the configuration.

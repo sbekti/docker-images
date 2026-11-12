@@ -30,11 +30,6 @@ RUN : > src/modules/stable \
       --with-modules='rlm_always rlm_eap rlm_expr rlm_files rlm_ldap rlm_linelog rlm_mschap rlm_pap' \
  && make -j"$(nproc)" \
  && make install \
- && openssl x509 -in /opt/etc/raddb/certs/server.pem \
-      -out /opt/etc/raddb/certs/server-unencrypted.pem \
- && openssl pkey -in /opt/etc/raddb/certs/server.key \
-      -passin pass:whatever \
-      >> /opt/etc/raddb/certs/server-unencrypted.pem \
  && find /opt/bin -type f ! -name radclient -delete \
  && rm -rf /opt/include /opt/share/doc /opt/share/man \
       /opt/sbin/checkrad /opt/sbin/raddebug /opt/sbin/radmin \
@@ -58,11 +53,11 @@ RUN : > src/modules/stable \
     do mv "/opt/lib/${library}.so" /opt/lib.keep/; done \
  && rm -rf /opt/lib \
  && mv /opt/lib.keep /opt/lib \
- && strip --strip-unneeded /opt/sbin/radiusd /opt/lib/*.so
+ && strip --strip-unneeded /opt/sbin/radiusd /opt/lib/*.so \
+ && rm -rf /opt/etc/raddb/certs
 
 FROM alpine:${ALPINE_VERSION}
 RUN apk add --no-cache \
-      coreutils \
       curl \
       jq \
       libcrypto3 \
@@ -76,71 +71,10 @@ RUN apk add --no-cache \
 
 COPY --from=build /opt /opt
 
-RUN rm -f /opt/etc/raddb/mods-enabled/* /opt/etc/raddb/sites-enabled/* \
- && cp /opt/etc/raddb/mods-available/always \
-      /opt/etc/raddb/mods-available/expr \
-      /opt/etc/raddb/mods-available/pap \
-      /opt/etc/raddb/mods-enabled/ \
- && sed -i \
-      -e 's/^#[[:space:]]*user = radius/user = radius/' \
-      -e 's/^#[[:space:]]*group = radius/group = radius/' \
-      -e 's/^[[:space:]]*destination = files/destination = stdout/' \
-      /opt/etc/raddb/radiusd.conf \
- && chown -R radius:radius /opt/var
-
-COPY clients.conf /opt/etc/raddb/clients.conf
-COPY default inner-tunnel operator-access /opt/etc/raddb/sites-enabled/
-COPY eap files ldap mschap radius_auth /opt/etc/raddb/mods-enabled/
 COPY --chmod=755 ntlm_auth_bridge /usr/local/bin/ntlm_auth_bridge
 COPY --chmod=755 entrypoint.sh /radius-local-entrypoint.sh
 
-ENV PATH="/opt/sbin:/opt/bin:${PATH}" \
-    RADIUS_LISTEN_ADDRESS="*" \
-    RADIUS_LISTEN_PORT="1812" \
-    RADIUS_CLIENT_LIMIT_PROXY_STATE="yes" \
-    RADIUS_CLIENT_REQUIRE_MESSAGE_AUTHENTICATOR="yes" \
-    RADIUS_OPERATOR_CLIENT_REQUIRE_MESSAGE_AUTHENTICATOR="yes" \
-    RADIUS_OPERATOR_LISTEN_ADDRESS="*" \
-    RADIUS_OPERATOR_LISTEN_PORT="18120" \
-    RADIUS_MAB_USERS_FILE="/run/radius-local/mab-users" \
-    RADIUS_LDAP_PORT="389"
-
-RUN chgrp -R radius /opt/etc/raddb \
- && chmod -R g+rX /opt/etc/raddb \
- && mkdir -p \
-      /run/radius-local \
-      /run/secrets/radius-operator \
-      /run/secrets/radius-client \
-      /run/secrets/radius-eap \
-      /run/secrets/radius-ldap \
- && printf '%s\n' '# radius-mab-v1' > /run/radius-local/mab-users \
- && printf '%s\n' 'build-only-client' > /run/secrets/radius-client/secret \
- && printf '%s\n' 'build-only-operator' > /run/secrets/radius-operator/secret \
- && printf '%s\n' 'build-only-password' > /run/secrets/radius-ldap/password \
- && cp /opt/etc/raddb/certs/server-unencrypted.pem /run/secrets/radius-eap/server.pem \
- && env \
-      RADIUS_CLIENT_ADDRESS=192.0.2.0/24 \
-      RADIUS_OPERATOR_CLIENT_ADDRESS=192.0.2.0/24 \
-      RADIUS_OPERATOR_GROUP=network-operators \
-      RADIUS_OPERATOR_REPLY_ATTRIBUTES=Filter-Id=operator \
-      RADIUS_DEFAULT_VLAN=10 \
-      RADIUS_EAP_VLAN_MAP=wifi-primary=10,wifi-secondary=20 \
-      RADIUS_LDAP_BASE_DN=dc=example,dc=test \
-      RADIUS_LDAP_IDENTITY=radius-reader@example.test \
-      RADIUS_LDAP_SERVER=192.0.2.10 \
-      RADIUS_NTLM_AUTH_BRIDGE_URL=http://192.0.2.11:9555 \
-      RADIUS_WINBIND_DOMAIN=EXAMPLE \
-      /radius-local-entrypoint.sh radiusd -XC \
- && rm -rf \
-      /opt/etc/raddb/certs \
-      /run/radius-local \
-      /run/radius-local-runtime \
-      /run/secrets/radius-operator \
-      /run/secrets/radius-client \
-      /run/secrets/radius-eap \
-      /run/secrets/radius-ldap
-
+ENV PATH="/opt/sbin:/opt/bin:${PATH}"
 EXPOSE 1812/udp 18120/udp
-
 ENTRYPOINT ["/radius-local-entrypoint.sh"]
-CMD ["radiusd"]
+CMD ["radiusd", "-f", "-l", "stdout", "-d", "/run/radius-local-runtime/config"]

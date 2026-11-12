@@ -1,83 +1,54 @@
 #!/bin/sh
-# Exercise the published reply policy with synthetic MAC identities.
+# Test only the runtime contract; Homeinfra tests its rendered authentication policy.
 set -eu
 image=${1:-radius-local:test}
 work=$(mktemp -d)
-container="radius-local-test-$$"
-trap 'docker rm -f "$container" >/dev/null 2>&1 || true; rm -rf "$work"' EXIT
-openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=radius.example.test \
-    -keyout "$work/key.pem" -out "$work/server.pem" >/dev/null 2>&1
-cat "$work/key.pem" >> "$work/server.pem"
-chmod 644 "$work/server.pem"
-docker run -d --name "$container" --network none \
-    --tmpfs /tmp:rw,size=16m \
-    --tmpfs /run/radius-local-runtime:rw,size=4m \
-    -v "$work/server.pem:/run/secrets/radius-eap/server.pem:ro" \
-    -e RADIUS_CLIENT_ADDRESS=127.0.0.1 \
-    -e RADIUS_OPERATOR_CLIENT_ADDRESS=192.0.2.1 \
-    -e RADIUS_OPERATOR_GROUP=operators \
-    -e RADIUS_OPERATOR_REPLY_ATTRIBUTES=Filter-Id=operator \
-    -e RADIUS_DEFAULT_VLAN=10 \
-    -e RADIUS_EAP_VLAN_MAP=trusted=100,iot=20 \
-    -e RADIUS_LDAP_BASE_DN=dc=example,dc=test \
-    -e RADIUS_LDAP_IDENTITY=reader@example.test \
-    -e RADIUS_LDAP_SERVER=192.0.2.10 \
-    -e RADIUS_NTLM_AUTH_BRIDGE_URL=http://192.0.2.11:9555 \
-    -e RADIUS_WINBIND_DOMAIN=EXAMPLE \
-    --entrypoint /bin/sh "$image" -ec '
-        mkdir -p /run/radius-local /run/secrets/radius-client /run/secrets/radius-operator /run/secrets/radius-ldap
-        for name in radius-client radius-operator radius-ldap; do
-            printf "%s\n" test-secret > /run/secrets/$name/secret
-        done
-        mv /run/secrets/radius-ldap/secret /run/secrets/radius-ldap/password
-        printf "%s\n" "# radius-mab-v1" > /run/radius-local/mab-users
-        for entry in 020000000001:100 020000000002:20; do
-            mac=${entry%:*}; vlan=${entry#*:}
-            printf "%s Cleartext-Password := \"%s\"\n    Tunnel-Type := VLAN,\n    Tunnel-Medium-Type := IEEE-802,\n    Tunnel-Private-Group-Id := \"%s\"\n\n" "$mac" "$mac" "$vlan" >> /run/radius-local/mab-users
-        done
-        # Match RouterOS bind-mount permissions.
-        chmod 0777 /run/radius-local
-        chmod 0666 /run/radius-local/mab-users
-        exec /radius-local-entrypoint.sh radiusd
-    ' >/dev/null
-for attempt in 1 2 3 4 5; do
-    if docker logs "$container" 2>&1 | grep -q 'Ready to process requests'; then break; fi
-    sleep 1
-done
-check() {
-    reply=$(printf 'User-Name = "%s"\nUser-Password = "%s"\n' "$1" "$2" |
-        docker exec -i "$container" radclient -x -r 1 -t 3 -S /run/secrets/radius-client/secret 127.0.0.1:1812 auth)
-    printf '%s\n' "$reply" | grep -q 'Received Access-Accept'
-    printf '%s\n' "$reply" | grep -Eq "Tunnel-Private-Group-Id(:0)? = \"$3\""
-    printf '%s\n' "$reply" | grep -Eq "Mikrotik-Wireless-VLANID = $3$"
-    printf '%s\n' "$reply" | grep -Eq 'Mikrotik-Wireless-VLANID(-Type|type) = (0|802.1q)$'
-    docker logs "$container" 2>&1 | grep -Eq "radius_auth .*user=$1 .*vlan=$3 reason=$5$"
-    printf 'PASS %s\n' "$4"
+trap 'rm -rf "$work"' EXIT
+mkdir -p "$work/config" "$work/policy" "$work/secrets"
+cat > "$work/config/radiusd.conf" <<'EOF'
+prefix = /opt
+libdir = /opt/lib
+log {
+    destination = stdout
 }
-check 020000000001 020000000001 100 trusted registered_mac
-check 020000000002 020000000002 20 iot registered_mac
-check 020000000003 020000000003 10 unknown unknown_mac
-check 020000000001 wrong-password 10 wrong-credential credential_mismatch
-
-if docker logs "$container" 2>&1 | grep -Eq 'wrong-password|test-secret|BEGIN .*PRIVATE KEY'; then
-    echo 'Credentials appeared in authentication logs' >&2
+security {
+    user = radius
+    group = radius
+}
+modules {
+    $INCLUDE /opt/etc/raddb/mods-available/always
+}
+server example {
+    listen {
+        type = auth
+        ipaddr = 127.0.0.1
+        port = 1812
+    }
+    authorize {
+        reject
+    }
+}
+EOF
+printf '%s' fixture > "$work/policy/policy"
+chmod -R a+rwX "$work/config" "$work/policy" "$work/secrets"
+run() {
+    docker run --rm --network none \
+        --tmpfs /tmp:rw,size=16m --tmpfs /run/radius-local-runtime:rw,size=4m \
+        -v "$work/config:/etc/raddb:ro" \
+        -v "$work/policy:/run/radius-local:ro" \
+        -v "$work/secrets:/run/secrets:ro" "$image" "$@"
+}
+run radiusd -C -d /run/radius-local-runtime/config >/dev/null
+run sh -ec '
+    test "$(stat -c %a /run/radius-local-runtime/config/radiusd.conf)" = 640
+    test "$(stat -c %a /run/radius-local-runtime/config)" = 750
+    cmp /etc/raddb/radiusd.conf /run/radius-local-runtime/config/radiusd.conf
+    cmp /run/radius-local/policy /run/radius-local-runtime/policy/policy
+'
+printf '%s\n' 'PASS native configuration and private RAM copies'
+printf '%s\n' 'invalid configuration {' > "$work/config/radiusd.conf"
+if run radiusd -C -d /run/radius-local-runtime/config >/dev/null 2>&1; then
+    echo 'Invalid configuration was accepted' >&2
     exit 1
 fi
-if docker diff "$container" | grep -q '/opt/etc/raddb'; then
-    echo 'Runtime modified the image configuration' >&2
-    exit 1
-fi
-printf '%s\n' 'PASS credential-free logs and RAM runtime'
-
-# A local logging failure must not change authentication either.
-docker exec "$container" sed -i 's|/dev/stdout|/dev/null/unwritable|' /opt/etc/raddb/mods-enabled/radius_auth
-docker restart "$container" >/dev/null
-for attempt in 1 2 3 4 5 6 7 8 9 10; do
-    if [ "$(docker logs "$container" 2>&1 | grep -c 'Ready to process requests')" -ge 2 ]; then break; fi
-    sleep 1
-done
-reply=$(printf 'User-Name = "020000000001"\nUser-Password = "020000000001"\n' |
-    docker exec -i "$container" radclient -x -r 1 -t 3 -S /run/secrets/radius-client/secret 127.0.0.1:1812 auth)
-printf '%s\n' "$reply" | grep -q 'Received Access-Accept'
-printf '%s\n' "$reply" | grep -Eq 'Tunnel-Private-Group-Id(:0)? = "100"'
-printf '%s\n' 'PASS authentication survives logging failure'
+printf '%s\n' 'PASS malformed configuration fails'
