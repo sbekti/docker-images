@@ -1,5 +1,5 @@
 # Keep the RouterOS-verified base; newer releases need a device smoke test.
-ARG ALPINE_VERSION="3.24.1"
+ARG ALPINE_VERSION="3.24.4"
 ARG FREERADIUS_RELEASE="release_3_2_10"
 ARG FREERADIUS_SHA256="3e9f24439ce976c04e4c56441722a3bd18677a61dd17f67bc8863eb4ed36cd4b"
 
