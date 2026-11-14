@@ -7,11 +7,12 @@ trap 'docker rm -f "$container" >/dev/null 2>&1 || true; rm -rf "$work"' EXIT
 mkdir "$work/logs"
 chmod 777 "$work/logs"
 cat > "$work/rsyslog.conf" <<'CONF'
-global(workDirectory="/run/rsyslog")
+global(workDirectory="/run/rsyslog" compatibility.defaults.secure="strict")
 module(load="imudp")
 template(name="Daily" type="string" string="/logs/%timegenerated:::date-year%-%timegenerated:::date-month%-%timegenerated:::date-day%.log")
 template(name="Line" type="string" string="%timegenerated:::date-rfc3339,date-utc% sender=%fromhost-ip% host=%hostname% %syslogtag%%msg%\n")
 action(type="omfile" dynaFile="Daily" template="Line" fileCreateMode="0640")
+action(type="omfile" file="/dev/stdout" template="Line" followSymlinks="on")
 input(type="imudp" port="15514")
 CONF
 chmod 644 "$work/rsyslog.conf"
@@ -34,11 +35,14 @@ for attempt in 1 2 3 4 5; do
     sleep 1
 done
 docker exec "$container" grep -q 'sender=127.0.0.1 host=example.test.*daily-file-probe' "/logs/$(date -u +%F).log"
+docker logs "$container" 2>&1 | grep -q "daily-file-probe"
 # Exercise the same simple retention operation used by a daily cleanup job.
 docker exec "$container" sh -ec '
     touch -d @1 /logs/1970-01-01.log
+    touch -d "@$(( $(date +%s) - 29 * 86400 ))" /logs/2000-01-01.log
     find /logs -maxdepth 1 -type f -name "????-??-??.log" -mtime +29 -delete
     test ! -e /logs/1970-01-01.log
+    test -e /logs/2000-01-01.log
     test -s "/logs/$(date -u +%F).log"
 '
 printf '%s\n' 'PASS non-root UDP reception, receipt-date files, retention and SSH-free packages'
